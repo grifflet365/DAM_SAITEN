@@ -39,6 +39,29 @@ AI_HEART_CANDIDATES = [
     "GetScoringHeartListXML.do",
 ]
 
+# 1曲ごとの詳細(音程・安定性・表現力・リズム・VLなどの内訳)を取得するための設定。
+# 「一覧のレコードに入っているID属性名」と「詳細取得POSTで送るパラメータ名」が
+# モードによって一致しない(Ai Heartのみ異なる)ため、明示的にマッピングする。
+MODE_DETAIL_CONFIG = {
+    "ai": {
+        "list_id_attr": "scoringAiId",
+        "post_id_param": "scoringAiId",
+        "url": "https://www.clubdam.com/app/damtomo/scoring/GetScoringAiListXML.do",
+    },
+    "dxg": {
+        "list_id_attr": "scoringDxgId",
+        "post_id_param": "scoringDxgId",
+        "url": "https://www.clubdam.com/app/damtomo/scoring/GetScoringDxgListXML.do",
+    },
+    "hearts": {
+        "list_id_attr": "scoringHeartsHistoryId",
+        "post_id_param": "scoringHistoryId",
+        "url": "https://www.clubdam.com/app/damtomo/scoring/GetScoringHeartsListXML.do",
+    },
+}
+
+MAX_DETAIL_FETCH_PER_RUN = 500  # 1回の実行での詳細取得の上限(安全弁)
+
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36")
 
@@ -270,7 +293,92 @@ def fetch_xml_list(session, url, params, debug_dump_path=None, page_param="pageN
     return all_records
 
 
-def make_record_id(mode, rec):
+def fetch_detail(session, url, post_id_param, id_value, cdm_card_no, cdm_token):
+    """1曲分の詳細(音程・安定性・表現力・リズム・VL等)を取得する
+
+    詳細ボタンを押した際と同じPOSTリクエストを再現している(2026/08 確認済み):
+      POST <一覧と同じURL>
+      body: {post_id_param: id, cdmCardNo, cdmToken, detailFlg: 1, enc: sjis}
+    レスポンスの形式自体は一覧取得と同じ(<list><data><scoring 属性大量.../></data></list>)
+    なので、一覧用のパーサーをそのまま使い回せる。
+    """
+    payload = {
+        post_id_param: id_value,
+        "cdmCardNo": cdm_card_no,
+        "cdmToken": cdm_token,
+        "detailFlg": "1",
+        "enc": "sjis",
+    }
+    r = session.post(
+        url,
+        data=payload,
+        headers={
+            "User-Agent": UA,
+            "Referer": MYPAGE_URL,
+            "X-Requested-With": "XMLHttpRequest",
+            "Content-Type": "application/x-www-form-urlencoded",
+        },
+        timeout=30,
+    )
+    r.raise_for_status()
+    if not r.text.strip().startswith("<"):
+        raise RuntimeError(f"XMLではないレスポンスが返りました: {r.text[:200]}")
+
+    records, _ = parse_scoring_xml(r.text)
+    return records[0] if records else None
+
+
+def enrich_with_details(session, mode, merged_records, cdm_card_no, cdm_token):
+    """まだ詳細を取得していないレコードにだけ、詳細情報を追加取得してマージする"""
+    config = MODE_DETAIL_CONFIG.get(mode)
+    if not config:
+        return 0
+
+    targets = [r for r in merged_records if not r.get("_detailFetched")]
+    if not targets:
+        log(f"{mode}: 詳細取得が必要な曲はありません")
+        return 0
+
+    if len(targets) > MAX_DETAIL_FETCH_PER_RUN:
+        log(
+            f"{mode}: 詳細取得対象が{len(targets)}件あり、"
+            f"上限({MAX_DETAIL_FETCH_PER_RUN}件)を超えるため今回は一部のみ処理し、"
+            f"残りは次回の実行で続きから処理します。"
+        )
+    targets = targets[:MAX_DETAIL_FETCH_PER_RUN]
+
+    log(f"{mode}: {len(targets)}曲分の詳細を取得します...")
+    success = 0
+    fail = 0
+    missing_id_count = 0
+    for rec in targets:
+        id_value = rec.get(config["list_id_attr"])
+        if not id_value:
+            missing_id_count += 1
+            if missing_id_count <= 3:
+                log(f"  警告: {config['list_id_attr']} が見つからないためスキップ (曲名: {rec.get('contentsName') or rec.get('songName')})")
+            elif missing_id_count == 4:
+                log("  警告: 同様のケースが多数あるため、以降は件数のみ表示します")
+            rec["_detailFetched"] = True  # 諦めて次回も再試行しないようにする
+            fail += 1
+            continue
+        try:
+            detail = fetch_detail(
+                session, config["url"], config["post_id_param"], id_value, cdm_card_no, cdm_token
+            )
+            if detail:
+                rec.update(detail)  # 追加の属性(音程・安定性等)をマージ
+            rec["_detailFetched"] = True
+            success += 1
+        except Exception as e:
+            log(f"  警告: 詳細取得失敗 (id={id_value}): {e}")
+            fail += 1
+        time.sleep(0.2)
+
+    if missing_id_count:
+        log(f"{mode}: ID項目({config['list_id_attr']})が見つからなかった曲: {missing_id_count}件")
+    log(f"{mode}: 詳細取得 成功{success}件 / 失敗{fail}件")
+    return success
     """レコードの一意IDを作る(APIが独自IDを返さない場合のフォールバック含む)"""
     for key in ("scoringAiId", "scoringId", "id", "no", "serial"):
         if key in rec and rec[key]:
@@ -405,10 +513,14 @@ def main():
         path = os.path.join(DATA_DIR, f"{mode}.json")
         existing = load_existing(path)
         merged, added = merge_new_records(mode, existing, fetched)
-        save_json(path, merged)
-        summary[mode] = {"total": len(merged), "added": added}
-        combined_for_dashboard[mode] = merged
         log(f"{mode}: 累計 {len(merged)}件 (今回 +{added}件)")
+
+        # 詳細(音程・安定性・表現力・リズム・VL等)をまだ取得していない曲だけ追加取得
+        enriched_count = enrich_with_details(session, mode, merged, cdm_card_no, cdm_token)
+
+        save_json(path, merged)
+        summary[mode] = {"total": len(merged), "added": added, "detailFetched": enriched_count}
+        combined_for_dashboard[mode] = merged
 
     # ダッシュボード用にまとめて出力
     save_json(
