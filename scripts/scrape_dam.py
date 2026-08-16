@@ -198,14 +198,23 @@ def parse_scoring_xml(xml_text):
             rec["_tag"] = strip_ns(body.tag)
             raw_text = (body.text or "").strip()
             rec["_scoreRawText"] = raw_text
-            if raw_text.replace("-", "").isdigit():
-                rec["score"] = round(int(raw_text) / 1000, 3)
+
+            # 点数の入り方はモードによって違う:
+            #   精密採点Ai        : 要素のテキスト部分 (<scoring ...>90619</scoring>)
+            #   精密採点Ai Heart  : totalScore 属性 (<scoringHearts totalScore="88272" .../>)
+            score_source = None
+            if "totalScore" in rec:
+                score_source = rec["totalScore"]
+            elif raw_text:
+                score_source = raw_text
+            if score_source and score_source.replace("-", "").isdigit():
+                rec["score"] = round(int(score_source) / 1000, 3)
             records.append(rec)
 
     return records, page_meta
 
 
-def fetch_xml_list(session, url, params, debug_dump_path=None, page_param="page", max_pages=60):
+def fetch_xml_list(session, url, params, debug_dump_path=None, page_param="pageNo", max_pages=60):
     """XML APIを全ページ分たどってレコード一覧(list of dict)を返す
 
     DAM側のレスポンスは以下の形式(2026/08 確認済み):
@@ -225,6 +234,7 @@ def fetch_xml_list(session, url, params, debug_dump_path=None, page_param="page"
     while page_no <= max_pages:
         page_params = dict(params)
         page_params[page_param] = page_no
+        page_params["UTCserial"] = str(int(time.time() * 1000))
 
         r = session.get(
             url,
@@ -325,7 +335,12 @@ def main():
         ai_records = fetch_xml_list(
             session,
             f"{BASE}/app/damtomo/scoring/GetScoringAiListXML.do",
-            {"cdmCardNo": cdm_card_no},
+            {
+                "cdmCardNo": cdm_card_no,
+                "cdmToken": cdm_token,
+                "enc": "sjis",
+                "detailFlg": "0",
+            },
             debug_dump_path=os.path.join(DATA_DIR, "_debug", "ai_raw.xml"),
         )
         log(f"精密採点Ai: {len(ai_records)}件 取得")
@@ -340,7 +355,12 @@ def main():
         dxg_records = fetch_xml_list(
             session,
             f"{BASE}/app/damtomo/scoring/GetScoringDxgListXML.do",
-            {"cdmCardNo": cdm_card_no, "cdmToken": cdm_token, "detailFlg": "0"},
+            {
+                "cdmCardNo": cdm_card_no,
+                "cdmToken": cdm_token,
+                "enc": "sjis",
+                "detailFlg": "0",
+            },
             debug_dump_path=os.path.join(DATA_DIR, "_debug", "dxg_raw.xml"),
         )
         log(f"精密採点DX-G: {len(dxg_records)}件 取得")
@@ -358,7 +378,12 @@ def main():
             hearts_records = fetch_xml_list(
                 session,
                 f"{BASE}/app/damtomo/scoring/{candidate}",
-                {"cdmCardNo": cdm_card_no},
+                {
+                    "cdmCardNo": cdm_card_no,
+                    "cdmToken": cdm_token,
+                    "enc": "sjis",
+                    "detailFlg": "0",
+                },
                 debug_dump_path=os.path.join(DATA_DIR, "_debug", "hearts_raw.xml"),
             )
             if hearts_records:
