@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="カラオケ記録">
+<meta name="theme-color" content="#1A1B3A">
+<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<title>カラオケ記録</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=Noto+Sans+JP:wght@400;500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --indigo-950:#12132C; --indigo-900:#1A1B3A; --indigo-800:#252752; --indigo-700:#33356C;
+    --amber:#E8A94C; --amber-dim:#B5813A; --coral:#E85D75;
+    --cream:#F5F0E6; --cream-dim:#B9B4A6;
+    --maxw:720px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{margin:0;font-family:'Noto Sans JP','Zen Kaku Gothic New',sans-serif;background:var(--indigo-950);color:var(--cream);min-height:100vh;padding-bottom:3rem;}
+  .wrap{max-width:var(--maxw);margin:0 auto;}
+  .header{position:relative;overflow:hidden;padding:2.4rem 1.25rem 1.6rem;background:linear-gradient(180deg,#2A1B4A 0%,#4A2050 35%,#7A3155 60%,#C45A45 85%,#E8A94C 100%);}
+  .header::before{content:'';position:absolute;left:0;right:0;bottom:0;height:55%;background-image:repeating-linear-gradient(90deg,transparent 0 38px,rgba(232,169,76,0.12) 38px 39px),repeating-linear-gradient(0deg,transparent 0 18px,rgba(232,169,76,0.12) 18px 19px);-webkit-mask-image:linear-gradient(to bottom,transparent,black 40%);mask-image:linear-gradient(to bottom,transparent,black 40%);transform:perspective(180px) rotateX(35deg);transform-origin:bottom;}
+  .header::after{content:'';position:absolute;left:50%;bottom:8%;width:120px;height:120px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#FFE9B8,#E8A94C 55%,#C45A45 100%);transform:translateX(-50%);box-shadow:0 0 50px rgba(232,169,76,0.5);}
+  .header-content{position:relative;z-index:2;}
+  .eyebrow{font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:0.25em;opacity:0.85;margin:0 0 0.3rem;}
+  h1{font-weight:900;font-size:1.7rem;margin:0;text-shadow:0 2px 12px rgba(0,0,0,0.3);}
+  .updated{font-size:11px;opacity:0.75;margin-top:0.3rem;font-family:'Share Tech Mono',monospace;}
+
+  .section{padding:1.1rem 1.25rem 0;}
+  .chip-row{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;-ms-overflow-style:none;scrollbar-width:none;}
+  .chip-row::-webkit-scrollbar{display:none;}
+  .chip{flex:0 0 auto;padding:6px 14px;border-radius:999px;border:1px solid var(--indigo-700);color:var(--cream-dim);font-size:12.5px;white-space:nowrap;cursor:pointer;background:none;}
+  .chip.active{background:var(--amber);color:#1A1220;border-color:var(--amber);font-weight:700;}
+
+  .tabs{display:flex;gap:6px;margin-top:14px;border-bottom:1px solid var(--indigo-700);}
+  .tab{flex:1;padding:9px 0;border:none;background:none;border-bottom:2px solid transparent;font-size:13px;color:var(--cream-dim);cursor:pointer;}
+  .tab.active{border-bottom-color:var(--amber);color:var(--cream);font-weight:700;}
+
+  .stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px;}
+  .item-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:8px;}
+  .stat-card{background:var(--indigo-800);border:1px solid var(--indigo-700);border-radius:12px;padding:0.75rem;}
+  .stat-label{font-size:11px;color:var(--cream-dim);margin-bottom:4px;}
+  .stat-value{font-family:'Share Tech Mono',monospace;font-size:1.25rem;color:var(--amber);}
+
+  .history-list{margin-top:14px;}
+  .entry{background:var(--indigo-800);border:1px solid var(--indigo-700);border-radius:12px;padding:0.7rem 0.9rem;margin-bottom:8px;display:flex;align-items:center;gap:10px;}
+  .entry-score{font-family:'Share Tech Mono',monospace;font-size:1.1rem;color:var(--amber);background:var(--indigo-950);border:1px solid var(--indigo-700);border-radius:8px;padding:5px 4px;min-width:52px;text-align:center;flex-shrink:0;}
+  .entry-body{flex:1;min-width:0;}
+  .entry-song{font-size:13.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .entry-artist{font-size:11.5px;color:var(--cream-dim);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .entry-date{font-size:10.5px;color:var(--cream-dim);opacity:0.7;margin-top:2px;}
+  .empty{text-align:center;padding:2.5rem 1rem;color:var(--cream-dim);font-size:13px;}
+  .footer-note{text-align:center;font-size:11px;color:var(--cream-dim);opacity:0.5;padding:2rem 1rem 0.5rem;font-family:'Share Tech Mono',monospace;letter-spacing:0.1em;}
+
+  @media (min-width:600px){
+    .stats-row{grid-template-columns:repeat(4,1fr);}
+    .item-grid{grid-template-columns:repeat(3,1fr);}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div class="header-content">
+      <p class="eyebrow">KARAOKE LOG // DAM★とも自動連携</p>
+      <h1>カラオケ記録</h1>
+      <p class="updated" id="updatedAt">読み込み中...</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="chip-row" id="periodBar">
+      <button class="chip active" data-period="all">全期間</button>
+      <button class="chip" data-period="year">今年</button>
+      <button class="chip" data-period="30d">直近30日</button>
+      <button class="chip" data-period="month">今月</button>
+    </div>
+
+    <div class="tabs" id="modeTabs">
+      <button class="tab active" data-mode="ai">精密採点Ai</button>
+      <button class="tab" data-mode="dxg">DX-G</button>
+      <button class="tab" data-mode="hearts">Ai Heart</button>
+    </div>
+
+    <div class="stats-row" id="statsRow"></div>
+    <div class="item-grid" id="itemGrid"></div>
+
+    <p style="font-size:13px;font-weight:500;margin:20px 0 8px;">履歴</p>
+    <div class="history-list" id="historyList"></div>
+  </div>
+
+  <p class="footer-note">GITHUB ACTIONS 経由で自動更新</p>
+</div>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./service-worker.js').catch(() => {});
+  });
+}
+
+// 実際のAPIレスポンスのフィールド名が確定するまでの間、候補を順に探す
+const FIELD_CANDIDATES = {
+  song: ['songName', 'title', 'kyokumei', 'song'],
+  artist: ['artistName', 'artist', 'kashu', 'singer'],
+  score: ['totalScore', 'score', 'tenSu', 'point'],
+  date: ['date', 'scoringDate', 'saitenDate', 'toukeiDate', 'playDate'],
+};
+
+const ITEM_LABELS = {
+  ai: [['音程', ['radarChartPitch','pitch']], ['安定性', ['radarChartStability','stability']], ['表現力', ['radarChartExpressive','expressive']], ['リズム', ['radarChartRhythm','rhythm']], ['VL', ['radarChartVibratoLongtone','vibratoLongtone']]],
+  dxg: [['音程', ['radarChartPitch','pitch']], ['安定性', ['radarChartStability','stability']], ['表現力', ['radarChartExpressive','expressive']], ['リズム', ['radarChartRhythm','rhythm']], ['VL', ['radarChartVibratoLongtone','vibratoLongtone']]],
+  hearts: [['音程', ['radarChartPitch','pitch']], ['安定性', ['radarChartStability','stability']], ['表現力', ['radarChartExpressive','expressive']], ['リズム', ['radarChartRhythm','rhythm']], ['聴感', ['hearingPoint','hearing']]],
+};
+
+function pick(rec, candidates) {
+  for (const c of candidates) {
+    if (rec[c] !== undefined && rec[c] !== null && rec[c] !== '') return rec[c];
+  }
+  return null;
+}
+
+function num(v) {
+  const n = parseFloat(String(v).replace(/[^\d.\-]/g, ''));
+  return isNaN(n) ? null : n;
+}
+
+function parseDate(v) {
+  if (!v) return null;
+  const m = String(v).match(/(\d{4})[\/\-年]?(\d{1,2})[\/\-月]?(\d{1,2})/);
+  if (!m) return null;
+  return new Date(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3]));
+}
+
+let DATA = { modes: {} };
+let curPeriod = 'all';
+let curMode = 'ai';
+
+function inPeriod(d, period) {
+  if (!d) return period === 'all';
+  const now = new Date();
+  if (period === 'all') return true;
+  if (period === 'year') return d.getFullYear() === now.getFullYear();
+  if (period === 'month') return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+  if (period === '30d') {
+    const diff = (now - d) / (1000 * 60 * 60 * 24);
+    return diff >= 0 && diff <= 30;
+  }
+  return true;
+}
+
+function render() {
+  const records = (DATA.modes[curMode] || []).map(r => ({
+    raw: r,
+    song: pick(r, FIELD_CANDIDATES.song) || '(曲名不明)',
+    artist: pick(r, FIELD_CANDIDATES.artist) || '',
+    score: num(pick(r, FIELD_CANDIDATES.score)),
+    date: parseDate(pick(r, FIELD_CANDIDATES.date)),
+  })).filter(r => inPeriod(r.date, curPeriod));
+
+  records.sort((a, b) => (b.date || 0) - (a.date || 0));
+
+  const scores = records.map(r => r.score).filter(s => s !== null);
+  const count = records.length;
+  const avg = scores.length ? (scores.reduce((a, b) => a + b, 0) / scores.length) : null;
+  const max = scores.length ? Math.max(...scores) : null;
+
+  const statsRow = document.getElementById('statsRow');
+  statsRow.innerHTML = `
+    <div class="stat-card"><div class="stat-label">記録数</div><div class="stat-value">${count}曲</div></div>
+    <div class="stat-card"><div class="stat-label">平均点</div><div class="stat-value">${avg !== null ? avg.toFixed(1) : '--'}</div></div>
+    <div class="stat-card"><div class="stat-label">最高点</div><div class="stat-value">${max !== null ? max.toFixed(1) : '--'}</div></div>
+  `;
+
+  const itemGrid = document.getElementById('itemGrid');
+  itemGrid.innerHTML = '';
+  const itemDefs = ITEM_LABELS[curMode] || [];
+  itemDefs.forEach(([label, candidates]) => {
+    const vals = records.map(r => num(pick(r.raw, candidates))).filter(v => v !== null);
+    const itemAvg = vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length) : null;
+    const card = document.createElement('div');
+    card.className = 'stat-card';
+    card.innerHTML = `<div class="stat-label">${label} 平均</div><div class="stat-value" style="font-size:16px;">${itemAvg !== null ? itemAvg.toFixed(1) : '--'}</div>`;
+    itemGrid.appendChild(card);
+  });
+
+  const historyList = document.getElementById('historyList');
+  if (records.length === 0) {
+    historyList.innerHTML = '<div class="empty">この期間の記録はまだありません</div>';
+  } else {
+    historyList.innerHTML = records.slice(0, 100).map(r => `
+      <div class="entry">
+        <div class="entry-score">${r.score !== null ? r.score.toFixed(1) : '--'}</div>
+        <div class="entry-body">
+          <div class="entry-song">${escapeHtml(r.song)}</div>
+          <div class="entry-artist">${escapeHtml(r.artist)}</div>
+          <div class="entry-date">${r.date ? r.date.toLocaleDateString('ja-JP') : ''}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+}
+
+function escapeHtml(str) {
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+document.getElementById('periodBar').addEventListener('click', (e) => {
+  const btn = e.target.closest('.chip');
+  if (!btn) return;
+  document.querySelectorAll('#periodBar .chip').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  curPeriod = btn.dataset.period;
+  render();
+});
+
+document.getElementById('modeTabs').addEventListener('click', (e) => {
+  const btn = e.target.closest('.tab');
+  if (!btn) return;
+  document.querySelectorAll('#modeTabs .tab').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  curMode = btn.dataset.mode;
+  render();
+});
+
+fetch('./data.json?_=' + Date.now())
+  .then(r => r.json())
+  .then(json => {
+    DATA = json;
+    const updated = document.getElementById('updatedAt');
+    if (json.updatedAt) {
+      const d = new Date(json.updatedAt);
+      updated.textContent = '最終更新: ' + d.toLocaleString('ja-JP');
+    } else {
+      updated.textContent = '';
+    }
+    render();
+  })
+  .catch(() => {
+    document.getElementById('updatedAt').textContent = 'データがまだありません(初回実行待ち)';
+    render();
+  });
+</script>
+</body>
+</html>

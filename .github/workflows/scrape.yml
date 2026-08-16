@@ -1,0 +1,48 @@
+name: DAMスコア取得
+
+on:
+  schedule:
+    # 毎日 JST 2:00 と 14:00 に実行 (UTCではそれぞれ前日17:00, 当日05:00)
+    - cron: "0 17 * * *"
+    - cron: "0 5 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: dam-scrape
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@v4
+
+      - name: Python セットアップ
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 依存パッケージをインストール
+        run: pip install requests
+
+      - name: スクレイピング実行
+        env:
+          DAM_LOGIN_ID: ${{ secrets.DAM_LOGIN_ID }}
+          DAM_PASSWORD: ${{ secrets.DAM_PASSWORD }}
+        run: python scripts/scrape_dam.py
+
+      - name: 変更があればコミット&プッシュ
+        run: |
+          git config user.name "dam-scraper-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/ docs/data.json
+          if git diff --cached --quiet; then
+            echo "変更なし、コミットをスキップします"
+          else
+            git commit -m "採点データ更新 $(TZ='Asia/Tokyo' date '+%Y-%m-%d %H:%M JST')"
+            git push
+          fi
