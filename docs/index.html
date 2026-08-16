@@ -106,10 +106,10 @@ if ('serviceWorker' in navigator) {
 
 // 実際のAPIレスポンスのフィールド名が確定するまでの間、候補を順に探す
 const FIELD_CANDIDATES = {
-  song: ['songName', 'title', 'kyokumei', 'song'],
-  artist: ['artistName', 'artist', 'kashu', 'singer'],
-  score: ['totalScore', 'score', 'tenSu', 'point'],
-  date: ['date', 'scoringDate', 'saitenDate', 'toukeiDate', 'playDate'],
+  song: ['contentsName', 'songName', 'title'],
+  artist: ['artistName', 'artist', 'singer'],
+  score: ['score', 'totalScore', 'point'],
+  date: ['scoringDateTime', 'date', 'scoringDate', 'playDate'],
 };
 
 const ITEM_LABELS = {
