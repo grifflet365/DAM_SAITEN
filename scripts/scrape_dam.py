@@ -162,40 +162,10 @@ def xml_to_dict(elem):
     return d
 
 
-def fetch_xml_list(session, url, params, debug_dump_path=None):
-    """XML APIを叩いてレコードのリスト(list of dict)を返す
+def parse_scoring_xml(xml_text):
+    """1ページ分のXMLをパースして (records, page_meta) を返す"""
+    root = ET.fromstring(xml_text)
 
-    DAM側のレスポンスは以下の形式で固定されている(2026/08 確認済み):
-      <document>
-        <list count="N">
-          <data>
-            <scoring contentsName="曲名" artistName="アーティスト" ...>90619</scoring>
-          </data>
-          ...
-        </list>
-      </document>
-    レコードごとに中の要素名(scoring / scoringDxg / scoringHearts等)は
-    モードによって異なるが、構造(dataの直下に1要素、属性に情報、
-    テキストが1000倍した点数)は共通と想定して処理する。
-    """
-    r = session.get(
-        url,
-        params=params,
-        headers={"User-Agent": UA, "Referer": MYPAGE_URL},
-        timeout=30,
-    )
-    r.raise_for_status()
-    if r.status_code != 200 or not r.text.strip().startswith("<"):
-        raise RuntimeError(f"XMLではないレスポンスが返りました: {r.text[:200]}")
-
-    if debug_dump_path:
-        os.makedirs(os.path.dirname(debug_dump_path), exist_ok=True)
-        with open(debug_dump_path, "w", encoding="utf-8") as f:
-            f.write(r.text)
-
-    root = ET.fromstring(r.text)
-
-    # status を確認(エラー時はここに理由が入っていることが多い)
     status_elem = root.find(".//{*}status")
     status_code_elem = root.find(".//{*}statusCode")
     if status_elem is not None and status_elem.text and status_elem.text.strip() != "OK":
@@ -206,27 +176,88 @@ def fetch_xml_list(session, url, params, debug_dump_path=None):
             f"message={msg_elem.text if msg_elem is not None else ''}"
         )
 
+    page_meta = {"currentPage": 1, "pageCount": 1, "hasNext": False}
+    page_elem = root.find(".//{*}page")
+    if page_elem is not None:
+        try:
+            page_meta["currentPage"] = int((page_elem.text or "1").strip())
+        except ValueError:
+            pass
+        page_meta["pageCount"] = int(page_elem.attrib.get("pageCount", "1"))
+        page_meta["hasNext"] = page_elem.attrib.get("hasNext", "0") == "1"
+
     list_elem = root.find(".//{*}list")
-    if list_elem is None:
-        return []
-
     records = []
-    for data_elem in list_elem.findall("{*}data"):
-        # data の直下にある「本体」要素(scoring / scoringDxg / scoringHearts等)を取る
-        children = list(data_elem)
-        if not children:
-            continue
-        body = children[0]
-        rec = dict(body.attrib)  # 属性(曲名・アーティスト名・日時など)を全部フィールド化
-        rec["_tag"] = strip_ns(body.tag)
-        raw_text = (body.text or "").strip()
-        rec["_scoreRawText"] = raw_text
-        if raw_text.replace("-", "").isdigit():
-            # DAMの点数表現(例: "90619" -> 90.619点) を変換
-            rec["score"] = round(int(raw_text) / 1000, 3)
-        records.append(rec)
+    if list_elem is not None:
+        for data_elem in list_elem.findall("{*}data"):
+            children = list(data_elem)
+            if not children:
+                continue
+            body = children[0]
+            rec = dict(body.attrib)
+            rec["_tag"] = strip_ns(body.tag)
+            raw_text = (body.text or "").strip()
+            rec["_scoreRawText"] = raw_text
+            if raw_text.replace("-", "").isdigit():
+                rec["score"] = round(int(raw_text) / 1000, 3)
+            records.append(rec)
 
-    return records
+    return records, page_meta
+
+
+def fetch_xml_list(session, url, params, debug_dump_path=None, page_param="page", max_pages=60):
+    """XML APIを全ページ分たどってレコード一覧(list of dict)を返す
+
+    DAM側のレスポンスは以下の形式(2026/08 確認済み):
+      <document>
+        <data><page dataCount="200" pageCount="40" hasNext="1">1</page>...</data>
+        <list count="5">
+          <data><scoring contentsName="曲名" artistName="アーティスト" ...>90619</scoring></data>
+          ...
+        </list>
+      </document>
+    1ページ5件・最大40ページ(=200件)なので、hasNext="0"になるまでページを進めて全件取得する。
+    """
+    all_records = []
+    page_no = 1
+    first_dump_saved = False
+
+    while page_no <= max_pages:
+        page_params = dict(params)
+        page_params[page_param] = page_no
+
+        r = session.get(
+            url,
+            params=page_params,
+            headers={"User-Agent": UA, "Referer": MYPAGE_URL},
+            timeout=30,
+        )
+        r.raise_for_status()
+        if not r.text.strip().startswith("<"):
+            raise RuntimeError(f"XMLではないレスポンスが返りました: {r.text[:200]}")
+
+        if debug_dump_path and not first_dump_saved:
+            os.makedirs(os.path.dirname(debug_dump_path), exist_ok=True)
+            with open(debug_dump_path, "w", encoding="utf-8") as f:
+                f.write(r.text)
+            first_dump_saved = True
+
+        records, page_meta = parse_scoring_xml(r.text)
+        all_records.extend(records)
+
+        if not records:
+            break
+        if not page_meta["hasNext"]:
+            break
+        if page_meta["currentPage"] != page_no:
+            # ページ番号パラメータが効いていない(=同じページが返り続けている)可能性
+            log(f"  警告: 要求したページ({page_no})と応答のページ({page_meta['currentPage']})が一致しません。ページングを打ち切ります。")
+            break
+
+        page_no += 1
+        time.sleep(0.3)  # 連続アクセスを避ける
+
+    return all_records
 
 
 def make_record_id(mode, rec):
@@ -309,7 +340,7 @@ def main():
         dxg_records = fetch_xml_list(
             session,
             f"{BASE}/app/damtomo/scoring/GetScoringDxgListXML.do",
-            {"cdmCardNo": cdm_card_no, "cdmToken": cdm_token},
+            {"cdmCardNo": cdm_card_no, "cdmToken": cdm_token, "detailFlg": "0"},
             debug_dump_path=os.path.join(DATA_DIR, "_debug", "dxg_raw.xml"),
         )
         log(f"精密採点DX-G: {len(dxg_records)}件 取得")
