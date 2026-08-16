@@ -360,6 +360,7 @@ def main():
                 "cdmToken": cdm_token,
                 "enc": "sjis",
                 "detailFlg": "0",
+                "dxgType": "1",
             },
             debug_dump_path=os.path.join(DATA_DIR, "_debug", "dxg_raw.xml"),
         )
