@@ -54,6 +54,9 @@
   .entry-song{font-size:13.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .entry-artist{font-size:11.5px;color:var(--cream-dim);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .entry-date{font-size:10.5px;color:var(--cream-dim);opacity:0.7;margin-top:2px;}
+  .entry-items{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:6px;}
+  .entry-item{font-size:10.5px;color:var(--cream-dim);white-space:nowrap;}
+  .entry-item b{color:var(--amber);font-family:'Share Tech Mono',monospace;font-weight:400;}
   .empty{text-align:center;padding:2.5rem 1rem;color:var(--cream-dim);font-size:13px;}
   .footer-note{text-align:center;font-size:11px;color:var(--cream-dim);opacity:0.5;padding:2rem 1rem 0.5rem;font-family:'Share Tech Mono',monospace;letter-spacing:0.1em;}
 
@@ -113,9 +116,29 @@ const FIELD_CANDIDATES = {
 };
 
 const ITEM_LABELS = {
-  ai: [['音程', ['radarChartPitch','pitch']], ['安定性', ['radarChartStability','stability']], ['表現力', ['radarChartExpressive','expressive']], ['リズム', ['radarChartRhythm','rhythm']], ['VL', ['radarChartVibratoLongtone','vibratoLongtone']]],
-  dxg: [['音程', ['radarChartPitch','pitch']], ['安定性', ['radarChartStability','stability']], ['表現力', ['radarChartExpressive','expressive']], ['リズム', ['radarChartRhythm','rhythm']], ['VL', ['radarChartVibratoLongtone','vibratoLongtone']]],
-  hearts: [['音程', ['radarChartPitch','pitch']], ['安定性', ['radarChartStability','stability']], ['表現力', ['radarChartExpressive','expressive']], ['リズム', ['radarChartRhythm','rhythm']], ['聴感', ['hearingPoint','hearing']]],
+  ai: [
+    ['音程', ['radarChartPitch']],
+    ['安定性', ['radarChartStability']],
+    ['表現力', ['radarChartExpressive']],
+    ['リズム', ['radarChartRhythm']],
+    ['VL', ['radarChartVibratoLongtone']],
+    ['Ai感性', ['aiSensitivityPoints']],
+    ['Aiボーナス', ['aiSensitivityBonus'], 1000],
+  ],
+  dxg: [
+    ['音程', ['radarChartPitch']],
+    ['安定性', ['radarChartStability']],
+    ['表現力', ['radarChartExpressive']],
+    ['リズム', ['radarChartRhythm']],
+    ['VL', ['radarChartVibratoLongtone']],
+  ],
+  hearts: [
+    ['音程', ['radarChartPitch']],
+    ['安定性', ['radarChartStability']],
+    ['表現力', ['radarChartExpressive']],
+    ['リズム', ['radarChartRhythm']],
+    ['聴感', ['radarChartHearing']],
+  ],
 };
 
 function pick(rec, candidates) {
@@ -180,12 +203,15 @@ function render() {
   const itemGrid = document.getElementById('itemGrid');
   itemGrid.innerHTML = '';
   const itemDefs = ITEM_LABELS[curMode] || [];
-  itemDefs.forEach(([label, candidates]) => {
-    const vals = records.map(r => num(pick(r.raw, candidates))).filter(v => v !== null);
+  itemDefs.forEach(([label, candidates, divisor]) => {
+    const vals = records
+      .map(r => num(pick(r.raw, candidates)))
+      .filter(v => v !== null)
+      .map(v => (divisor ? v / divisor : v));
     const itemAvg = vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length) : null;
     const card = document.createElement('div');
     card.className = 'stat-card';
-    card.innerHTML = `<div class="stat-label">${label} 平均</div><div class="stat-value" style="font-size:16px;">${itemAvg !== null ? itemAvg.toFixed(1) : '--'}</div>`;
+    card.innerHTML = `<div class="stat-label">${label} 平均</div><div class="stat-value" style="font-size:16px;">${itemAvg !== null ? itemAvg.toFixed(divisor ? 3 : 1) : '--'}</div>`;
     itemGrid.appendChild(card);
   });
 
@@ -193,16 +219,27 @@ function render() {
   if (records.length === 0) {
     historyList.innerHTML = '<div class="empty">この期間の記録はまだありません</div>';
   } else {
-    historyList.innerHTML = records.slice(0, 100).map(r => `
+    historyList.innerHTML = records.slice(0, 100).map(r => {
+      const itemDefs = ITEM_LABELS[curMode] || [];
+      const itemsHtml = itemDefs.map(([label, candidates, divisor]) => {
+        let v = num(pick(r.raw, candidates));
+        if (v === null) return '';
+        if (divisor) v = v / divisor;
+        return `<span class="entry-item">${label} <b>${v.toFixed(divisor ? 3 : 0)}</b></span>`;
+      }).filter(Boolean).join('');
+
+      return `
       <div class="entry">
         <div class="entry-score">${r.score !== null ? r.score.toFixed(1) : '--'}</div>
         <div class="entry-body">
           <div class="entry-song">${escapeHtml(r.song)}</div>
           <div class="entry-artist">${escapeHtml(r.artist)}</div>
           <div class="entry-date">${r.date ? r.date.toLocaleDateString('ja-JP') : ''}</div>
+          ${itemsHtml ? `<div class="entry-items">${itemsHtml}</div>` : ''}
         </div>
       </div>
-    `).join('');
+    `;
+    }).join('');
   }
 }
 
