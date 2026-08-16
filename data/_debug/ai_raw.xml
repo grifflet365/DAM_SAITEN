@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<document xmlns="https://www.clubdam.com/app/damtomo/scoring/GetScoringAiListXML" type="2.2">
+<result>
+<status>OK</status>
+<statusCode>0000</statusCode>
+<message></message>
+</result>
+<data>
+<page dataCount="200" pageCount="40" hasNext="1" hasPreview="0">1</page>
+<cdmCardNo>ODAwMDExOTY4MjMyMzA1</cdmCardNo>
+</data>
+<list count="5">
+<data>
+<scoring scoringAiId="2691696" requestNo="6880-87" contentsName="ノーザンクロス" artistName="シェリル・ノーム starring May'n" dContentsName="ノーザンクロス" dArtistName="シェリル・ノーム starring May'n" lastPerformKey="+3" scoringDateTime="20260816132447" favorite="0">90619</scoring>
+</data>
+<data>
+<scoring scoringAiId="2691690" requestNo="3422-20" contentsName="TERMINATED" artistName="茅原実里" dContentsName="TERMINATED" dArtistName="茅原実里" lastPerformKey="+5" scoringDateTime="20260816132003" favorite="0">93731</scoring>
+</data>
+<data>
+<scoring scoringAiId="2691683" requestNo="5277-09" contentsName="怪獣の花唄" artistName="Vaundy" dContentsName="怪獣の花唄" dArtistName="Vaundy" lastPerformKey="-4" scoringDateTime="20260816131531" favorite="0">91001</scoring>
+</data>
+<data>
+<scoring scoringAiId="2691678" requestNo="4461-09" contentsName="God knows..." artistName="涼宮ハルヒ(CV.平野綾)" dContentsName="God knows..." dArtistName="涼宮ハルヒ(CV.平野綾)" lastPerformKey="+4" scoringDateTime="20260816131039" favorite="0">89521</scoring>
+</data>
+<data>
+<scoring scoringAiId="2691671" requestNo="1748-01" contentsName="タッチ" artistName="岩崎良美" dContentsName="タッチ" dArtistName="岩崎良美" lastPerformKey="-6" scoringDateTime="20260816130655" favorite="0">90136</scoring>
+</data>
+</list>
+</document>
+

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<document xmlns="https://www.clubdam.com/app/damtomo/scoring/GetScoringHeartsListXML" type="2.2">
+<result>
+<status>OK</status>
+<statusCode>0000</statusCode>
+<message>正常終了</message>
+</result>
+<data>
+<page dataCount="200" pageCount="40" hasNext="1" hasPreview="0">1</page>
+<cdmCardNo>ODAwMDExOTY4MjMyMzA1</cdmCardNo>
+</data>
+<list count="5">
+<data>
+<scoringHearts scoringHeartsHistoryId="278326" requestNo="3809-34" songName="sister's noise" artistName="fripSide" lastPerformKey="+4" totalScore="88272" scoringDateTime="20260810133144" medalKind="4" favorite="0">88272</scoringHearts>
+</data>
+<data>
+<scoringHearts scoringHeartsHistoryId="278318" requestNo="4461-09" songName="God knows..." artistName="涼宮ハルヒ(CV.平野綾)" lastPerformKey="+4" totalScore="88862" scoringDateTime="20260810132659" medalKind="4" favorite="0">88862</scoringHearts>
+</data>
+<data>
+<scoringHearts scoringHeartsHistoryId="278310" requestNo="5277-09" songName="怪獣の花唄" artistName="Vaundy" lastPerformKey="-4" totalScore="90022" scoringDateTime="20260810132200" medalKind="3" favorite="0">90022</scoringHearts>
+</data>
+<data>
+<scoringHearts scoringHeartsHistoryId="278299" requestNo="4461-09" songName="God knows..." artistName="涼宮ハルヒ(CV.平野綾)" lastPerformKey="+4" totalScore="88101" scoringDateTime="20260810131746" medalKind="4" favorite="0">88101</scoringHearts>
+</data>
+<data>
+<scoringHearts scoringHeartsHistoryId="278287" requestNo="1748-01" songName="タッチ" artistName="岩崎良美" lastPerformKey="+6" totalScore="89930" scoringDateTime="20260810131139" medalKind="4" favorite="0">89930</scoringHearts>
+</data>
+</list>
+</document>
+
