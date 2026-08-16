@@ -1,38 +1,7 @@
 {
-  "updatedAt": "2026-08-16T21:23:39.583149+09:00",
+  "updatedAt": "2026-08-16T21:35:15.008180+09:00",
   "modes": {
     "ai": [
-      {
-        "{https://www.clubdam.com/app/damtomo/scoring/GetScoringAiListXML}page": "1",
-        "{https://www.clubdam.com/app/damtomo/scoring/GetScoringAiListXML}cdmCardNo": "ODAwMDExOTY4MjMyMzA1",
-        "_id": "ai:897e08e3d414bf09",
-        "_fetchedAt": "2026-08-16T21:01:56.359024+09:00"
-      },
-      {
-        "{https://www.clubdam.com/app/damtomo/scoring/GetScoringAiListXML}scoring": "90619",
-        "_id": "ai:b39e0767834d5ce8",
-        "_fetchedAt": "2026-08-16T21:01:56.359057+09:00"
-      },
-      {
-        "{https://www.clubdam.com/app/damtomo/scoring/GetScoringAiListXML}scoring": "93731",
-        "_id": "ai:a970f6575adc376c",
-        "_fetchedAt": "2026-08-16T21:01:56.359075+09:00"
-      },
-      {
-        "{https://www.clubdam.com/app/damtomo/scoring/GetScoringAiListXML}scoring": "91001",
-        "_id": "ai:5fa0f45355cf9a59",
-        "_fetchedAt": "2026-08-16T21:01:56.359088+09:00"
-      },
-      {
-        "{https://www.clubdam.com/app/damtomo/scoring/GetScoringAiListXML}scoring": "89521",
-        "_id": "ai:1a4291a84f269f11",
-        "_fetchedAt": "2026-08-16T21:01:56.359102+09:00"
-      },
-      {
-        "{https://www.clubdam.com/app/damtomo/scoring/GetScoringAiListXML}scoring": "90136",
-        "_id": "ai:c9530ff1ebd7174b",
-        "_fetchedAt": "2026-08-16T21:01:56.359116+09:00"
-      },
       {
         "scoringAiId": "2691696",
         "requestNo": "6880-87",
@@ -47,7 +16,7 @@
         "_scoreRawText": "90619",
         "score": 90.619,
         "_id": "ai:2691696",
-        "_fetchedAt": "2026-08-16T21:23:39.582129+09:00"
+        "_fetchedAt": "2026-08-16T21:35:15.007593+09:00"
       },
       {
         "scoringAiId": "2691690",
@@ -63,7 +32,7 @@
         "_scoreRawText": "93731",
         "score": 93.731,
         "_id": "ai:2691690",
-        "_fetchedAt": "2026-08-16T21:23:39.582143+09:00"
+        "_fetchedAt": "2026-08-16T21:35:15.007606+09:00"
       },
       {
         "scoringAiId": "2691683",
@@ -79,7 +48,7 @@
         "_scoreRawText": "91001",
         "score": 91.001,
         "_id": "ai:2691683",
-        "_fetchedAt": "2026-08-16T21:23:39.582160+09:00"
+        "_fetchedAt": "2026-08-16T21:35:15.007621+09:00"
       },
       {
         "scoringAiId": "2691678",
@@ -95,7 +64,7 @@
         "_scoreRawText": "89521",
         "score": 89.521,
         "_id": "ai:2691678",
-        "_fetchedAt": "2026-08-16T21:23:39.582164+09:00"
+        "_fetchedAt": "2026-08-16T21:35:15.007625+09:00"
       },
       {
         "scoringAiId": "2691671",
@@ -111,42 +80,11 @@
         "_scoreRawText": "90136",
         "score": 90.136,
         "_id": "ai:2691671",
-        "_fetchedAt": "2026-08-16T21:23:39.582167+09:00"
+        "_fetchedAt": "2026-08-16T21:35:15.007628+09:00"
       }
     ],
     "dxg": [],
     "hearts": [
-      {
-        "{https://www.clubdam.com/app/damtomo/scoring/GetScoringHeartsListXML}page": "1",
-        "{https://www.clubdam.com/app/damtomo/scoring/GetScoringHeartsListXML}cdmCardNo": "ODAwMDExOTY4MjMyMzA1",
-        "_id": "hearts:6ea7115ed2a837cb",
-        "_fetchedAt": "2026-08-16T21:01:56.359720+09:00"
-      },
-      {
-        "{https://www.clubdam.com/app/damtomo/scoring/GetScoringHeartsListXML}scoringHearts": "88272",
-        "_id": "hearts:9f910c47c496f1d2",
-        "_fetchedAt": "2026-08-16T21:01:56.359742+09:00"
-      },
-      {
-        "{https://www.clubdam.com/app/damtomo/scoring/GetScoringHeartsListXML}scoringHearts": "88862",
-        "_id": "hearts:a05d80212648f0e0",
-        "_fetchedAt": "2026-08-16T21:01:56.359757+09:00"
-      },
-      {
-        "{https://www.clubdam.com/app/damtomo/scoring/GetScoringHeartsListXML}scoringHearts": "90022",
-        "_id": "hearts:c482370d33b2a4c5",
-        "_fetchedAt": "2026-08-16T21:01:56.359770+09:00"
-      },
-      {
-        "{https://www.clubdam.com/app/damtomo/scoring/GetScoringHeartsListXML}scoringHearts": "88101",
-        "_id": "hearts:bfe6a536cbcf1c38",
-        "_fetchedAt": "2026-08-16T21:01:56.359782+09:00"
-      },
-      {
-        "{https://www.clubdam.com/app/damtomo/scoring/GetScoringHeartsListXML}scoringHearts": "89930",
-        "_id": "hearts:ea73f3abae17d1b1",
-        "_fetchedAt": "2026-08-16T21:01:56.359797+09:00"
-      },
       {
         "scoringHeartsHistoryId": "278326",
         "requestNo": "3809-34",
@@ -161,7 +99,7 @@
         "_scoreRawText": "88272",
         "score": 88.272,
         "_id": "hearts:896db3665eb40071",
-        "_fetchedAt": "2026-08-16T21:23:39.582810+09:00"
+        "_fetchedAt": "2026-08-16T21:35:15.007983+09:00"
       },
       {
         "scoringHeartsHistoryId": "278318",
@@ -177,7 +115,7 @@
         "_scoreRawText": "88862",
         "score": 88.862,
         "_id": "hearts:5f1f4ebc9979e689",
-        "_fetchedAt": "2026-08-16T21:23:39.582838+09:00"
+        "_fetchedAt": "2026-08-16T21:35:15.008003+09:00"
       },
       {
         "scoringHeartsHistoryId": "278310",
@@ -193,7 +131,7 @@
         "_scoreRawText": "90022",
         "score": 90.022,
         "_id": "hearts:ffba3c06833f7d51",
-        "_fetchedAt": "2026-08-16T21:23:39.582854+09:00"
+        "_fetchedAt": "2026-08-16T21:35:15.008017+09:00"
       },
       {
         "scoringHeartsHistoryId": "278299",
@@ -209,7 +147,7 @@
         "_scoreRawText": "88101",
         "score": 88.101,
         "_id": "hearts:d5aedcb03a9477a9",
-        "_fetchedAt": "2026-08-16T21:23:39.582880+09:00"
+        "_fetchedAt": "2026-08-16T21:35:15.008029+09:00"
       },
       {
         "scoringHeartsHistoryId": "278287",
@@ -225,7 +163,7 @@
         "_scoreRawText": "89930",
         "score": 89.93,
         "_id": "hearts:527e690c69cb6d18",
-        "_fetchedAt": "2026-08-16T21:23:39.582903+09:00"
+        "_fetchedAt": "2026-08-16T21:35:15.008040+09:00"
       }
     ]
   }
