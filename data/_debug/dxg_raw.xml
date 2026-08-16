@@ -1,8 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document xmlns="https://www.clubdam.com/app/damtomo/scoring/GetScoringDxgListXML" type="1.0">
+<document xmlns="https://www.clubdam.com/app/damtomo/scoring/GetScoringDxgListXML" type="2.2">
 <result>
-<status>NG</status>
-<statusCode>1000</statusCode>
-<message>null</message>
+<status>OK</status>
+<statusCode>0000</statusCode>
+<message></message>
 </result>
+<data>
+<page overflag="0" dataCount="200" pageCount="40" hasNext="1" hasPreview="0">1</page>
+<cdmCardNo>ODAwMDExOTY4MjMyMzA1</cdmCardNo>
+</data>
+<list count="5">
+<data>
+<scoring scoringDxgId="102615844" requestNo="3422-20" contentsName="TERMINATED" artistName="茅原実里" dContentsName="TERMINATED" dArtistName="茅原実里" lastPerformKey="+3" scoringDateTime="20260623104845" favorite="0">84746</scoring>
+</data>
+<data>
+<scoring scoringDxgId="102613553" requestNo="3422-20" contentsName="TERMINATED" artistName="茅原実里" dContentsName="TERMINATED" dArtistName="茅原実里" lastPerformKey="+5" scoringDateTime="20260617122554" favorite="0">90501</scoring>
+</data>
+<data>
+<scoring scoringDxgId="102608137" requestNo="1019-01" contentsName="おどるポンポコリン" artistName="B.B.クィーンズ(B.B.QUEENS)" dContentsName="おどるポンポコリン" dArtistName="B.B.クィーンズ(B.B.QUEENS)" lastPerformKey="+5" scoringDateTime="20260605120957" favorite="0">91179</scoring>
+</data>
+<data>
+<scoring scoringDxgId="102608122" requestNo="6880-87" contentsName="ノーザンクロス" artistName="シェリル・ノーム starring May'n" dContentsName="ノーザンクロス" dArtistName="シェリル・ノーム starring May'n" lastPerformKey="+3" scoringDateTime="20260605110206" favorite="0">89174</scoring>
+</data>
+<data>
+<scoring scoringDxgId="102608118" requestNo="3326-01" contentsName="誰がために" artistName="成田賢・こおろぎ'73" dContentsName="誰がために" dArtistName="成田賢・こおろぎ'73" lastPerformKey="0" scoringDateTime="20260605105703" favorite="0">89218</scoring>
+</data>
+</list>
 </document>
+
