@@ -140,23 +140,29 @@ def extract_ids(mypage_html):
     return cdm_card_no, cdm_token
 
 
+def strip_ns(tag):
+    """'{http://...}tagName' -> 'tagName'"""
+    return tag.split("}", 1)[1] if "}" in tag else tag
+
+
 def xml_to_dict(elem):
     """XML要素を再帰的にdictへ変換する(同名タグが複数あればlistにまとめる)"""
     d = {}
     for child in elem:
+        tag = strip_ns(child.tag)
         val = xml_to_dict(child) if len(child) else (child.text or "").strip()
-        if child.tag in d:
-            if not isinstance(d[child.tag], list):
-                d[child.tag] = [d[child.tag]]
-            d[child.tag].append(val)
+        if tag in d:
+            if not isinstance(d[tag], list):
+                d[tag] = [d[tag]]
+            d[tag].append(val)
         else:
-            d[child.tag] = val
+            d[tag] = val
     if elem.attrib:
         d["_attrib"] = elem.attrib
     return d
 
 
-def fetch_xml_list(session, url, params, list_item_hint=None):
+def fetch_xml_list(session, url, params, list_item_hint=None, debug_dump_path=None):
     """XML APIを叩いてレコードのリスト(list of dict)を返す"""
     r = session.get(
         url,
@@ -168,6 +174,11 @@ def fetch_xml_list(session, url, params, list_item_hint=None):
     if r.status_code != 200 or not r.text.strip().startswith("<"):
         raise RuntimeError(f"XMLではないレスポンスが返りました: {r.text[:200]}")
 
+    if debug_dump_path:
+        os.makedirs(os.path.dirname(debug_dump_path), exist_ok=True)
+        with open(debug_dump_path, "w", encoding="utf-8") as f:
+            f.write(r.text)
+
     root = ET.fromstring(r.text)
 
     # レコードらしき繰り返し要素を探す(list_item_hintがあれば優先)
@@ -176,14 +187,18 @@ def fetch_xml_list(session, url, params, list_item_hint=None):
     if list_item_hint:
         candidates = root.findall(f".//{list_item_hint}")
     if not candidates:
-        # タグ名の出現頻度から一番多いものを「レコード単位」とみなす
+        # 「子要素を複数持つ(=1曲分のまとまりらしい)」タグの中で、
+        # 一番出現回数が多いものを「レコード単位」とみなす。
+        # (単なる出現頻度だけで選ぶと、point等の葉ノードを誤って
+        #  レコード単位と判定してしまうことがあるため、子要素の有無で絞り込む)
         from collections import Counter
 
         tag_counter = Counter()
         for e in root.iter():
-            tag_counter[e.tag] += 1
-        # ルート自身は除く
-        tag_counter.pop(root.tag, None)
+            if e is root:
+                continue
+            if len(e) >= 2:  # 子要素を2つ以上持つ = フィールドの集合らしい
+                tag_counter[e.tag] += 1
         if tag_counter:
             most_common_tag, count = tag_counter.most_common(1)[0]
             if count >= 2:
@@ -263,6 +278,7 @@ def main():
             session,
             f"{BASE}/app/damtomo/scoring/GetScoringAiListXML.do",
             {"cdmCardNo": cdm_card_no},
+            debug_dump_path=os.path.join(DATA_DIR, "_debug", "ai_raw.xml"),
         )
         log(f"精密採点Ai: {len(ai_records)}件 取得")
         results["ai"] = ai_records
@@ -277,6 +293,7 @@ def main():
             session,
             f"{BASE}/app/damtomo/scoring/GetScoringDxgListXML.do",
             {"cdmCardNo": cdm_card_no, "cdmToken": cdm_token},
+            debug_dump_path=os.path.join(DATA_DIR, "_debug", "dxg_raw.xml"),
         )
         log(f"精密採点DX-G: {len(dxg_records)}件 取得")
         results["dxg"] = dxg_records
@@ -294,6 +311,7 @@ def main():
                 session,
                 f"{BASE}/app/damtomo/scoring/{candidate}",
                 {"cdmCardNo": cdm_card_no},
+                debug_dump_path=os.path.join(DATA_DIR, "_debug", "hearts_raw.xml"),
             )
             if hearts_records:
                 log(f"精密採点Ai Heart: {candidate} で {len(hearts_records)}件 取得成功")
