@@ -162,8 +162,22 @@ def xml_to_dict(elem):
     return d
 
 
-def fetch_xml_list(session, url, params, list_item_hint=None, debug_dump_path=None):
-    """XML APIを叩いてレコードのリスト(list of dict)を返す"""
+def fetch_xml_list(session, url, params, debug_dump_path=None):
+    """XML APIを叩いてレコードのリスト(list of dict)を返す
+
+    DAM側のレスポンスは以下の形式で固定されている(2026/08 確認済み):
+      <document>
+        <list count="N">
+          <data>
+            <scoring contentsName="曲名" artistName="アーティスト" ...>90619</scoring>
+          </data>
+          ...
+        </list>
+      </document>
+    レコードごとに中の要素名(scoring / scoringDxg / scoringHearts等)は
+    モードによって異なるが、構造(dataの直下に1要素、属性に情報、
+    テキストが1000倍した点数)は共通と想定して処理する。
+    """
     r = session.get(
         url,
         params=params,
@@ -181,33 +195,36 @@ def fetch_xml_list(session, url, params, list_item_hint=None, debug_dump_path=No
 
     root = ET.fromstring(r.text)
 
-    # レコードらしき繰り返し要素を探す(list_item_hintがあれば優先)
+    # status を確認(エラー時はここに理由が入っていることが多い)
+    status_elem = root.find(".//{*}status")
+    status_code_elem = root.find(".//{*}statusCode")
+    if status_elem is not None and status_elem.text and status_elem.text.strip() != "OK":
+        msg_elem = root.find(".//{*}message")
+        raise RuntimeError(
+            f"APIがエラーを返しました: status={status_elem.text} "
+            f"code={status_code_elem.text if status_code_elem is not None else '?'} "
+            f"message={msg_elem.text if msg_elem is not None else ''}"
+        )
+
+    list_elem = root.find(".//{*}list")
+    if list_elem is None:
+        return []
+
     records = []
-    candidates = []
-    if list_item_hint:
-        candidates = root.findall(f".//{list_item_hint}")
-    if not candidates:
-        # 「子要素を複数持つ(=1曲分のまとまりらしい)」タグの中で、
-        # 一番出現回数が多いものを「レコード単位」とみなす。
-        # (単なる出現頻度だけで選ぶと、point等の葉ノードを誤って
-        #  レコード単位と判定してしまうことがあるため、子要素の有無で絞り込む)
-        from collections import Counter
-
-        tag_counter = Counter()
-        for e in root.iter():
-            if e is root:
-                continue
-            if len(e) >= 2:  # 子要素を2つ以上持つ = フィールドの集合らしい
-                tag_counter[e.tag] += 1
-        if tag_counter:
-            most_common_tag, count = tag_counter.most_common(1)[0]
-            if count >= 2:
-                candidates = root.findall(f".//{most_common_tag}")
-
-    for c in candidates:
-        d = xml_to_dict(c) if len(c) else {"value": (c.text or "").strip()}
-        if d:
-            records.append(d)
+    for data_elem in list_elem.findall("{*}data"):
+        # data の直下にある「本体」要素(scoring / scoringDxg / scoringHearts等)を取る
+        children = list(data_elem)
+        if not children:
+            continue
+        body = children[0]
+        rec = dict(body.attrib)  # 属性(曲名・アーティスト名・日時など)を全部フィールド化
+        rec["_tag"] = strip_ns(body.tag)
+        raw_text = (body.text or "").strip()
+        rec["_scoreRawText"] = raw_text
+        if raw_text.replace("-", "").isdigit():
+            # DAMの点数表現(例: "90619" -> 90.619点) を変換
+            rec["score"] = round(int(raw_text) / 1000, 3)
+        records.append(rec)
 
     return records
 
