@@ -379,6 +379,9 @@ def enrich_with_details(session, mode, merged_records, cdm_card_no, cdm_token):
         log(f"{mode}: ID項目({config['list_id_attr']})が見つからなかった曲: {missing_id_count}件")
     log(f"{mode}: 詳細取得 成功{success}件 / 失敗{fail}件")
     return success
+
+
+def make_record_id(mode, rec):
     """レコードの一意IDを作る(APIが独自IDを返さない場合のフォールバック含む)"""
     for key in ("scoringAiId", "scoringId", "id", "no", "serial"):
         if key in rec and rec[key]:
