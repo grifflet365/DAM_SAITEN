@@ -48,7 +48,7 @@
   .stat-value{font-family:'Share Tech Mono',monospace;font-size:1.25rem;color:var(--amber);}
 
   .history-list{margin-top:14px;}
-  .entry{background:var(--indigo-800);border:1px solid var(--indigo-700);border-radius:12px;padding:0.7rem 0.9rem;margin-bottom:8px;display:flex;align-items:center;gap:10px;}
+  .entry{background:var(--indigo-800);border:1px solid var(--indigo-700);border-radius:12px;padding:0.7rem 0.9rem;margin-bottom:8px;display:flex;align-items:flex-start;gap:10px;}
   .entry-score{font-family:'Share Tech Mono',monospace;font-size:1.1rem;color:var(--amber);background:var(--indigo-950);border:1px solid var(--indigo-700);border-radius:8px;padding:5px 4px;min-width:52px;text-align:center;flex-shrink:0;}
   .entry-body{flex:1;min-width:0;}
   .entry-song{font-size:13.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -115,6 +115,41 @@ const FIELD_CANDIDATES = {
   date: ['scoringDateTime', 'date', 'scoringDate', 'playDate'],
 };
 
+// 曲ごとの技法回数(しゃくり・こぶし・フォール・アクセント・ハンマリング・ビブラート)
+const TECHNIQUE_LABELS = {
+  ai: [['しゃくり','shakuriCount'],['こぶし','kobushiCount'],['フォール','fallCount'],['ビブラート','vibratoCount']],
+  dxg: [['しゃくり','shakuriCount'],['こぶし','kobushiCount'],['フォール','fallCount'],['ビブラート','vibratoCount']],
+  hearts: [['しゃくり','shakuriCount'],['こぶし','kobushiCount'],['フォール','fallCount'],['アクセント','accentCount'],['ハンマリング','hammeringOnCount'],['ビブラート','vibratoCount']],
+};
+
+// ミニレーダーチャート用の軸(モードによって聴感が入るかどうかが違う)
+const RADAR_AXES = {
+  ai: ['radarChartPitch','radarChartStability','radarChartExpressive','radarChartRhythm','radarChartVibratoLongtone'],
+  dxg: ['radarChartPitch','radarChartStability','radarChartExpressive','radarChartRhythm','radarChartVibratoLongtone'],
+  hearts: ['radarChartPitch','radarChartStability','radarChartExpressive','radarChartRhythm','radarChartVibratoLongtone','radarChartHearing'],
+};
+
+function radarSvg(values, size) {
+  const n = values.length;
+  if (n < 3) return '';
+  const cx = size / 2, cy = size / 2, R = size / 2 - 3;
+  const pointAt = (v, i) => {
+    const angle = -Math.PI / 2 + i * (2 * Math.PI / n);
+    const r = (Math.max(0, Math.min(100, v)) / 100) * R;
+    return [cx + r * Math.cos(angle), cy + r * Math.sin(angle)];
+  };
+  const outlineAt = (i) => {
+    const angle = -Math.PI / 2 + i * (2 * Math.PI / n);
+    return [cx + R * Math.cos(angle), cy + R * Math.sin(angle)];
+  };
+  const poly = values.map((v, i) => pointAt(v, i).join(',')).join(' ');
+  const outline = values.map((_, i) => outlineAt(i).join(',')).join(' ');
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="flex-shrink:0;">
+    <polygon points="${outline}" fill="none" stroke="#33356C" stroke-width="1"/>
+    <polygon points="${poly}" fill="rgba(232,169,76,0.35)" stroke="#E8A94C" stroke-width="1.2"/>
+  </svg>`;
+}
+
 const ITEM_LABELS = {
   ai: [
     ['音程', ['radarChartPitch']],
@@ -180,13 +215,22 @@ function inPeriod(d, period) {
 }
 
 function render() {
-  const records = (DATA.modes[curMode] || []).map(r => ({
-    raw: r,
-    song: pick(r, FIELD_CANDIDATES.song) || '(曲名不明)',
-    artist: pick(r, FIELD_CANDIDATES.artist) || '',
-    score: num(pick(r, FIELD_CANDIDATES.score)),
-    date: parseDate(pick(r, FIELD_CANDIDATES.date)),
-  })).filter(r => inPeriod(r.date, curPeriod));
+  const records = (DATA.modes[curMode] || []).map(r => {
+    const rawDateStr = pick(r, FIELD_CANDIDATES.date);
+    let timeStr = '';
+    if (rawDateStr && /^\d{12,14}$/.test(String(rawDateStr))) {
+      const s = String(rawDateStr);
+      timeStr = `${s.slice(8,10)}:${s.slice(10,12)}`;
+    }
+    return {
+      raw: r,
+      song: pick(r, FIELD_CANDIDATES.song) || '(曲名不明)',
+      artist: pick(r, FIELD_CANDIDATES.artist) || '',
+      score: num(pick(r, FIELD_CANDIDATES.score)),
+      date: parseDate(rawDateStr),
+      time: timeStr,
+    };
+  }).filter(r => inPeriod(r.date, curPeriod));
 
   records.sort((a, b) => (b.date || 0) - (a.date || 0));
 
@@ -230,15 +274,27 @@ function render() {
         return `<span class="entry-item">${label} <b>${v.toFixed(divisor ? 3 : 0)}</b></span>`;
       }).filter(Boolean).join('');
 
+      const techDefs = TECHNIQUE_LABELS[curMode] || [];
+      const techHtml = techDefs.map(([label, field]) => {
+        const v = num(pick(r.raw, [field]));
+        if (v === null) return '';
+        return `<span class="entry-item">${label} <b>${v}回</b></span>`;
+      }).filter(Boolean).join('');
+
+      const radarValues = (RADAR_AXES[curMode] || []).map(k => num(pick(r.raw, [k])) || 0);
+      const radar = radarSvg(radarValues, 52);
+
       return `
       <div class="entry">
         <div class="entry-score">${r.score !== null ? r.score.toFixed(1) : '--'}</div>
         <div class="entry-body">
           <div class="entry-song">${escapeHtml(r.song)}</div>
           <div class="entry-artist">${escapeHtml(r.artist)}</div>
-          <div class="entry-date">${r.date ? r.date.toLocaleDateString('ja-JP') : ''}</div>
+          <div class="entry-date">${r.date ? r.date.toLocaleDateString('ja-JP') : ''}${r.time ? ' ' + r.time : ''}</div>
           ${itemsHtml ? `<div class="entry-items">${itemsHtml}</div>` : ''}
+          ${techHtml ? `<div class="entry-items">${techHtml}</div>` : ''}
         </div>
+        ${radar}
       </div>
     `;
     }).join('');
