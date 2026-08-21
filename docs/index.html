@@ -371,6 +371,8 @@ function render() {
       if (vibratoType !== null && VIBRATO_TYPE_LABELS[vibratoType]) {
         detailParts.push(`ビブラートタイプ <b>${VIBRATO_TYPE_LABELS[vibratoType]}</b>`);
       }
+      const vibratoSec = num(pick(r.raw, ['vibratoTotalSecond']));
+      if (vibratoSec !== null) detailParts.push(`ビブラート合計 <b>${Math.floor(vibratoSec / 10)}秒</b>`);
       const detailHtml = detailParts.map(p => `<span class="entry-item">${p}</span>`).join('');
 
       const radarValues = (RADAR_AXES[curMode] || []).map(k => num(pick(r.raw, [k])) || 0);
