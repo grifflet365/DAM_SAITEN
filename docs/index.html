@@ -366,7 +366,11 @@ function render() {
       const stability = num(pick(r.raw, ['radarChartStability']));
       if (stability !== null) detailParts.push(`安定性(震えがち-まっすぐ) <b>${Math.ceil(stability / 10)}/10</b>`);
       const timing = num(pick(r.raw, ['timing']));
-      if (timing !== null) detailParts.push(`リズム(タメ-走り) <b>${timing}/10</b>`);
+      if (timing !== null) {
+        const diff = timing - 5;
+        const timingLabel = diff === 0 ? 'ちょうどいい0' : diff > 0 ? `タメ${diff}` : `走り${-diff}`;
+        detailParts.push(`リズム <b>${timingLabel}</b>`);
+      }
       const vibratoType = num(pick(r.raw, ['vibratoType']));
       if (vibratoType !== null && VIBRATO_TYPE_LABELS[vibratoType]) {
         detailParts.push(`ビブラートタイプ <b>${VIBRATO_TYPE_LABELS[vibratoType]}</b>`);
