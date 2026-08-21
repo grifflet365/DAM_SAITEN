@@ -72,6 +72,10 @@
   .entry-item{font-size:10.5px;color:var(--text-2);white-space:nowrap;}
   .entry-item b{color:var(--cyan);font-family:'Share Tech Mono',monospace;font-weight:400;}
   .empty{text-align:center;padding:2.5rem 1rem;color:var(--text-2);font-size:13px;}
+  .pager{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:14px;}
+  .pager-btn{background:var(--bg-1);border:1px solid var(--border-2);color:var(--text-1);border-radius:6px;padding:7px 16px;font-size:12.5px;cursor:pointer;font-family:'Share Tech Mono',monospace;}
+  .pager-btn:disabled{opacity:0.35;cursor:default;}
+  .pager-info{font-size:11.5px;color:var(--text-2);font-family:'Share Tech Mono',monospace;}
   .footer-note{text-align:center;font-size:11px;color:var(--text-2);opacity:0.6;padding:2rem 1rem 0.5rem;font-family:'Share Tech Mono',monospace;letter-spacing:0.1em;}
 
   @media (min-width:600px){
@@ -113,6 +117,7 @@
 
     <p style="font-size:13px;font-weight:500;margin:20px 0 8px;color:var(--text-1);">履歴</p>
     <div class="history-list" id="historyList"></div>
+    <div class="pager" id="pager"></div>
   </div>
 
   <p class="footer-note">GITHUB ACTIONS 経由で自動更新</p>
@@ -255,6 +260,8 @@ let curPeriod = 'all';
 let curMode = 'ai';
 let curCustomStart = null; // 'YYYY-MM-DD'
 let curCustomEnd = null;   // 'YYYY-MM-DD'
+let curPage = 1;
+const PAGE_SIZE = 100;
 
 function inPeriod(d, period) {
   if (!d) return period === 'all';
@@ -411,10 +418,18 @@ function render() {
   });
 
   const historyList = document.getElementById('historyList');
+  const pagerEl = document.getElementById('pager');
+  const totalPages = Math.max(1, Math.ceil(records.length / PAGE_SIZE));
+  if (curPage > totalPages) curPage = totalPages;
+  if (curPage < 1) curPage = 1;
+  const pageStart = (curPage - 1) * PAGE_SIZE;
+  const pageRecords = records.slice(pageStart, pageStart + PAGE_SIZE);
+
   if (records.length === 0) {
     historyList.innerHTML = '<div class="empty">この期間の記録はまだありません</div>';
+    pagerEl.innerHTML = '';
   } else {
-    historyList.innerHTML = records.slice(0, 100).map(r => {
+    historyList.innerHTML = pageRecords.map(r => {
       const itemDefs = ITEM_LABELS[curMode] || [];
       const itemsHtml = itemDefs.map(([label, candidates, divisor]) => {
         let v = num(pick(r.raw, candidates));
@@ -469,6 +484,16 @@ function render() {
       </div>
     `;
     }).join('');
+
+    pagerEl.innerHTML = `
+      <button class="pager-btn" id="pagerPrev" ${curPage <= 1 ? 'disabled' : ''}>← 前へ</button>
+      <span class="pager-info">${curPage} / ${totalPages} ページ(全${records.length}件)</span>
+      <button class="pager-btn" id="pagerNext" ${curPage >= totalPages ? 'disabled' : ''}>次へ →</button>
+    `;
+    const prevBtn = document.getElementById('pagerPrev');
+    const nextBtn = document.getElementById('pagerNext');
+    if (prevBtn) prevBtn.addEventListener('click', () => { curPage--; render(); });
+    if (nextBtn) nextBtn.addEventListener('click', () => { curPage++; render(); });
   }
 }
 
@@ -484,6 +509,7 @@ document.getElementById('periodBar').addEventListener('click', (e) => {
   document.querySelectorAll('#periodBar .chip').forEach(c => c.classList.remove('active'));
   btn.classList.add('active');
   curPeriod = btn.dataset.period;
+  curPage = 1;
 
   const customRangeEl = document.getElementById('customRange');
   if (curPeriod === 'custom') {
@@ -497,6 +523,7 @@ document.getElementById('periodBar').addEventListener('click', (e) => {
 function onCustomRangeChange() {
   curCustomStart = document.getElementById('customStart').value || null;
   curCustomEnd = document.getElementById('customEnd').value || null;
+  curPage = 1;
   if (curPeriod === 'custom') render();
 }
 document.getElementById('customStart').addEventListener('change', onCustomRangeChange);
@@ -508,6 +535,7 @@ document.getElementById('modeTabs').addEventListener('click', (e) => {
   document.querySelectorAll('#modeTabs .tab').forEach(c => c.classList.remove('active'));
   btn.classList.add('active');
   curMode = btn.dataset.mode;
+  curPage = 1;
   render();
 });
 
