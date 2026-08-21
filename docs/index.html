@@ -368,7 +368,7 @@ function render() {
       const timing = num(pick(r.raw, ['timing']));
       if (timing !== null) {
         const diff = timing - 5;
-        const timingLabel = diff === 0 ? 'ちょうどいい0' : diff > 0 ? `タメ${diff}` : `走り${-diff}`;
+        const timingLabel = diff === 0 ? '0' : diff > 0 ? `タメ${diff}` : `走り${-diff}`;
         detailParts.push(`リズム <b>${timingLabel}</b>`);
       }
       const vibratoType = num(pick(r.raw, ['vibratoType']));
