@@ -140,6 +140,14 @@ function radarSvg(values, size) {
   </svg>`;
 }
 
+// ビブラートタイプ(1〜14の通し番号 → 公式の表示名)
+const VIBRATO_TYPE_LABELS = {
+  1: 'ボックス形(A-1)', 2: 'ボックス形(A-2)', 3: 'ボックス形(A-3)',
+  4: 'ボックス形(B-1)', 5: 'ボックス形(B-2)', 6: 'ボックス形(B-3)',
+  7: 'ボックス形(C-1)', 8: 'ボックス形(C-2)', 9: 'ボックス形(C-3)',
+  10: '上昇形(D)', 11: '下降形(E)', 12: '縮小形(F)', 13: '拡張形(G)', 14: 'ひし形(H)',
+};
+
 const ITEM_LABELS = {
   ai: [
     ['音程', ['radarChartPitch']],
@@ -350,6 +358,21 @@ function render() {
         return `<span class="entry-item">${label} <b>${v}回</b></span>`;
       }).filter(Boolean).join('');
 
+      const detailParts = [];
+      const longtoneSkill = num(pick(r.raw, ['longtoneSkill']));
+      if (longtoneSkill !== null) detailParts.push(`ロングトーン上手さ <b>${(longtoneSkill / 2).toFixed(1)}/5</b>`);
+      const vibratoSkill = num(pick(r.raw, ['vibratoSkill']));
+      if (vibratoSkill !== null) detailParts.push(`ビブラート上手さ <b>${(vibratoSkill / 2).toFixed(1)}/5</b>`);
+      const stability = num(pick(r.raw, ['radarChartStability']));
+      if (stability !== null) detailParts.push(`安定性(震えがち-まっすぐ) <b>${Math.ceil(stability / 10)}/10</b>`);
+      const timing = num(pick(r.raw, ['timing']));
+      if (timing !== null) detailParts.push(`リズム(タメ-走り) <b>${timing}/10</b>`);
+      const vibratoType = num(pick(r.raw, ['vibratoType']));
+      if (vibratoType !== null && VIBRATO_TYPE_LABELS[vibratoType]) {
+        detailParts.push(`ビブラートタイプ <b>${VIBRATO_TYPE_LABELS[vibratoType]}</b>`);
+      }
+      const detailHtml = detailParts.map(p => `<span class="entry-item">${p}</span>`).join('');
+
       const radarValues = (RADAR_AXES[curMode] || []).map(k => num(pick(r.raw, [k])) || 0);
       const radar = radarSvg(radarValues, 52);
 
@@ -362,6 +385,7 @@ function render() {
           <div class="entry-date">${r.date ? r.date.toLocaleDateString('ja-JP') : ''}${r.time ? ' ' + r.time : ''}</div>
           ${itemsHtml ? `<div class="entry-items">${itemsHtml}</div>` : ''}
           ${techHtml ? `<div class="entry-items">${techHtml}</div>` : ''}
+          ${detailHtml ? `<div class="entry-items">${detailHtml}</div>` : ''}
         </div>
         ${radar}
       </div>
