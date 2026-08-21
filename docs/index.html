@@ -37,11 +37,29 @@
   .tab.active{border-bottom-color:var(--cyan);color:var(--text-1);font-weight:700;}
 
   .stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px;}
-  .item-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:8px;}
+  .item-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-top:8px;}
   .stat-card{background:var(--bg-1);border:1px solid var(--border-1);border-radius:8px;padding:0.75rem;}
   .stat-label{font-size:11px;color:var(--text-2);margin-bottom:4px;}
   .stat-value{font-family:'Share Tech Mono',monospace;font-size:1.25rem;color:var(--cyan);}
   .stat-value.accent-score{color:var(--magenta);}
+
+  .item-card{padding:0.5rem 0.6rem;}
+  .item-card .stat-label{font-size:12px;margin-bottom:2px;}
+  .item-card .stat-value{font-size:24px;}
+
+  .dist-wrap{margin-top:8px;background:var(--bg-1);border:1px solid var(--border-1);border-radius:8px;padding:0.75rem 0.9rem;}
+  .dist-title{font-size:11px;color:var(--text-2);margin-bottom:8px;}
+  .dist-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+  .dist-row:last-child{margin-bottom:0;}
+  .dist-label{width:76px;flex-shrink:0;font-size:11px;color:var(--text-2);font-family:'Share Tech Mono',monospace;}
+  .dist-track{flex:1;height:14px;background:var(--bg-0);border:1px solid var(--border-1);border-radius:4px;overflow:hidden;}
+  .dist-fill{height:100%;border-radius:3px;min-width:2px;transition:width 0.3s;}
+  .dist-count{width:34px;flex-shrink:0;text-align:right;font-size:11px;color:var(--text-1);font-family:'Share Tech Mono',monospace;}
+
+  .custom-range{display:none;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap;}
+  .custom-range.show{display:flex;}
+  .custom-range input[type="date"]{background:var(--bg-1);border:1px solid var(--border-2);color:var(--text-1);border-radius:6px;padding:5px 7px;font-family:'Share Tech Mono',monospace;font-size:12px;color-scheme:dark;}
+  .custom-range span{color:var(--text-2);font-size:12px;}
 
   .history-list{margin-top:14px;}
   .entry{background:var(--bg-1);border:1px solid var(--border-1);border-left:2px solid var(--cyan-dim);border-radius:8px;padding:0.7rem 0.9rem;margin-bottom:8px;display:flex;align-items:flex-start;gap:10px;}
@@ -72,6 +90,12 @@
       <button class="chip" data-period="year">今年</button>
       <button class="chip" data-period="30d">直近30日</button>
       <button class="chip" data-period="month">今月</button>
+      <button class="chip" data-period="custom">期間指定</button>
+    </div>
+    <div class="custom-range" id="customRange">
+      <input type="date" id="customStart">
+      <span>〜</span>
+      <input type="date" id="customEnd">
     </div>
 
     <div class="tabs" id="modeTabs">
@@ -82,6 +106,10 @@
 
     <div class="stats-row" id="statsRow"></div>
     <div class="item-grid" id="itemGrid"></div>
+    <div class="dist-wrap">
+      <div class="dist-title">スコア分布</div>
+      <div id="distChart"></div>
+    </div>
 
     <p style="font-size:13px;font-weight:500;margin:20px 0 8px;color:var(--text-1);">履歴</p>
     <div class="history-list" id="historyList"></div>
@@ -176,6 +204,33 @@ const ITEM_LABELS = {
   ],
 };
 
+// スコア分布の区分(下限は含む、上限は含まない。最後だけ95以上)
+const DIST_BINS = [
+  { label: '〜85未満', min: -Infinity, max: 85, color: '#6C8299' },
+  { label: '85〜88', min: 85, max: 88, color: '#4FC3F7' },
+  { label: '88〜90', min: 88, max: 90, color: '#4ADE80' },
+  { label: '90〜93', min: 90, max: 93, color: '#FF3D8A' },
+  { label: '93〜95', min: 93, max: 95, color: '#E63950' },
+  { label: '95以上', min: 95, max: Infinity, color: '#B983FF' },
+];
+
+function renderDistribution(scores) {
+  const distEl = document.getElementById('distChart');
+  if (!distEl) return;
+  const counts = DIST_BINS.map(bin => scores.filter(s => s >= bin.min && s < bin.max).length);
+  const maxCount = Math.max(1, ...counts);
+  distEl.innerHTML = DIST_BINS.map((bin, i) => {
+    const c = counts[i];
+    const pct = Math.max(c > 0 ? 4 : 0, (c / maxCount) * 100);
+    return `
+      <div class="dist-row">
+        <div class="dist-label">${bin.label}</div>
+        <div class="dist-track"><div class="dist-fill" style="width:${pct}%;background:${bin.color};"></div></div>
+        <div class="dist-count">${c}</div>
+      </div>`;
+  }).join('');
+}
+
 function pick(rec, candidates) {
   for (const c of candidates) {
     if (rec[c] !== undefined && rec[c] !== null && rec[c] !== '') return rec[c];
@@ -198,6 +253,8 @@ function parseDate(v) {
 let DATA = { modes: {} };
 let curPeriod = 'all';
 let curMode = 'ai';
+let curCustomStart = null; // 'YYYY-MM-DD'
+let curCustomEnd = null;   // 'YYYY-MM-DD'
 
 function inPeriod(d, period) {
   if (!d) return period === 'all';
@@ -208,6 +265,19 @@ function inPeriod(d, period) {
   if (period === '30d') {
     const diff = (now - d) / (1000 * 60 * 60 * 24);
     return diff >= 0 && diff <= 30;
+  }
+  if (period === 'custom') {
+    if (!curCustomStart && !curCustomEnd) return true;
+    const dayMs = 24 * 60 * 60 * 1000;
+    if (curCustomStart) {
+      const start = new Date(curCustomStart + 'T00:00:00');
+      if (d < start) return false;
+    }
+    if (curCustomEnd) {
+      const end = new Date(curCustomEnd + 'T00:00:00').getTime() + dayMs - 1;
+      if (d.getTime() > end) return false;
+    }
+    return true;
   }
   return true;
 }
@@ -323,6 +393,8 @@ function render() {
     <div class="stat-card"><div class="stat-label">最高点</div><div class="stat-value accent-score">${max !== null ? max.toFixed(1) : '--'}</div></div>
   `;
 
+  renderDistribution(scores);
+
   const itemGrid = document.getElementById('itemGrid');
   itemGrid.innerHTML = '';
   const itemDefs = ITEM_LABELS[curMode] || [];
@@ -333,8 +405,8 @@ function render() {
       .map(v => (divisor ? v / divisor : v));
     const itemAvg = vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length) : null;
     const card = document.createElement('div');
-    card.className = 'stat-card';
-    card.innerHTML = `<div class="stat-label">${label} 平均</div><div class="stat-value" style="font-size:16px;">${itemAvg !== null ? itemAvg.toFixed(divisor ? 3 : 1) : '--'}</div>`;
+    card.className = 'stat-card item-card';
+    card.innerHTML = `<div class="stat-label">${label} 平均</div><div class="stat-value">${itemAvg !== null ? itemAvg.toFixed(divisor ? 3 : 1) : '--'}</div>`;
     itemGrid.appendChild(card);
   });
 
@@ -412,8 +484,23 @@ document.getElementById('periodBar').addEventListener('click', (e) => {
   document.querySelectorAll('#periodBar .chip').forEach(c => c.classList.remove('active'));
   btn.classList.add('active');
   curPeriod = btn.dataset.period;
+
+  const customRangeEl = document.getElementById('customRange');
+  if (curPeriod === 'custom') {
+    customRangeEl.classList.add('show');
+  } else {
+    customRangeEl.classList.remove('show');
+  }
   render();
 });
+
+function onCustomRangeChange() {
+  curCustomStart = document.getElementById('customStart').value || null;
+  curCustomEnd = document.getElementById('customEnd').value || null;
+  if (curPeriod === 'custom') render();
+}
+document.getElementById('customStart').addEventListener('change', onCustomRangeChange);
+document.getElementById('customEnd').addEventListener('change', onCustomRangeChange);
 
 document.getElementById('modeTabs').addEventListener('click', (e) => {
   const btn = e.target.closest('.tab');
