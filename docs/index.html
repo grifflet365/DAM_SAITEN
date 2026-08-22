@@ -68,6 +68,7 @@
   .entry-song{font-size:13.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-1);}
   .entry-artist{font-size:11.5px;color:var(--text-2);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .entry-date{font-size:10.5px;color:var(--text-2);opacity:0.8;margin-top:2px;font-family:'Share Tech Mono',monospace;}
+  .entry-key{display:inline-block;margin-left:6px;padding:1px 6px;border:1px solid var(--border-2);border-radius:4px;color:var(--cyan);opacity:1;font-size:10px;}
   .entry-items{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:6px;}
   .entry-item{font-size:10.5px;color:var(--text-2);white-space:nowrap;}
   .entry-item b{color:var(--cyan);font-family:'Share Tech Mono',monospace;font-weight:400;}
@@ -469,13 +470,15 @@ function render() {
       const radarValues = (RADAR_AXES[curMode] || []).map(k => num(pick(r.raw, [k])) || 0);
       const radar = radarSvg(radarValues, 52);
 
+      const keyVal = pick(r.raw, ['lastPerformKey']);
+
       return `
       <div class="entry">
         <div class="entry-score">${r.score !== null ? r.score.toFixed(1) : '--'}</div>
         <div class="entry-body">
           <div class="entry-song">${escapeHtml(r.song)}</div>
           <div class="entry-artist">${escapeHtml(r.artist)}</div>
-          <div class="entry-date">${r.date ? r.date.toLocaleDateString('ja-JP') : ''}${r.time ? ' ' + r.time : ''}</div>
+          <div class="entry-date">${r.date ? r.date.toLocaleDateString('ja-JP') : ''}${r.time ? ' ' + r.time : ''}${keyVal ? ` <span class="entry-key">キー ${escapeHtml(keyVal)}</span>` : ''}</div>
           ${itemsHtml ? `<div class="entry-items">${itemsHtml}</div>` : ''}
           ${techHtml ? `<div class="entry-items">${techHtml}</div>` : ''}
           ${detailHtml ? `<div class="entry-items">${detailHtml}</div>` : ''}
