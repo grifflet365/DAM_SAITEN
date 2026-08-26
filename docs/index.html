@@ -163,10 +163,22 @@ const RADAR_AXES = {
   hearts: ['radarChartPitch','radarChartStability','radarChartExpressive','radarChartHearing','radarChartRhythm','radarChartVibratoLongtone'],
 };
 
-function radarSvg(values, size) {
+// レーダーチャートの軸ラベル(短縮表記)
+const RADAR_LABELS = {
+  radarChartPitch: '音程',
+  radarChartStability: '安定性',
+  radarChartExpressive: '表現力',
+  radarChartRhythm: 'リズム',
+  radarChartVibratoLongtone: 'ロング/ビブ',
+  radarChartHearing: '聴感',
+};
+
+function radarSvg(values, size, axisKeys) {
   const n = values.length;
   if (n < 3) return '';
-  const cx = size / 2, cy = size / 2, R = size / 2 - 3;
+  const pad = 26;
+  const vb = size + pad * 2;
+  const cx = vb / 2, cy = vb / 2, R = size / 2 - 3;
   const pointAt = (v, i) => {
     const angle = -Math.PI / 2 + i * (2 * Math.PI / n);
     const r = (Math.max(0, Math.min(100, v)) / 100) * R;
@@ -176,11 +188,27 @@ function radarSvg(values, size) {
     const angle = -Math.PI / 2 + i * (2 * Math.PI / n);
     return [cx + R * Math.cos(angle), cy + R * Math.sin(angle)];
   };
+  const labelAt = (i) => {
+    const angle = -Math.PI / 2 + i * (2 * Math.PI / n);
+    const lr = R + 13;
+    const x = cx + lr * Math.cos(angle);
+    const y = cy + lr * Math.sin(angle);
+    const cos = Math.cos(angle);
+    const anchor = cos > 0.2 ? 'start' : cos < -0.2 ? 'end' : 'middle';
+    return { x, y, anchor };
+  };
   const poly = values.map((v, i) => pointAt(v, i).join(',')).join(' ');
   const outline = values.map((_, i) => outlineAt(i).join(',')).join(' ');
-  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="flex-shrink:0;">
+  const labelsSvg = (axisKeys || []).map((k, i) => {
+    const label = RADAR_LABELS[k];
+    if (!label) return '';
+    const { x, y, anchor } = labelAt(i);
+    return `<text x="${x}" y="${y}" text-anchor="${anchor}" dominant-baseline="middle" font-family="Noto Sans JP, sans-serif" font-size="8.5" fill="#6C8299">${label}</text>`;
+  }).join('');
+  return `<svg width="${vb}" height="${vb}" viewBox="0 0 ${vb} ${vb}" style="flex-shrink:0;">
     <polygon points="${outline}" fill="none" stroke="#243349" stroke-width="1"/>
     <polygon points="${poly}" fill="rgba(45,233,220,0.22)" stroke="#2DE9DC" stroke-width="1.2"/>
+    ${labelsSvg}
   </svg>`;
 }
 
@@ -416,7 +444,7 @@ function buildRecordDetailFields(r) {
   const detailHtml = detailParts.map(p => `<span class="entry-item">${p}</span>`).join('');
 
   const radarValues = (RADAR_AXES[curMode] || []).map(k => num(pick(r.raw, [k])) || 0);
-  const radar = radarSvg(radarValues, 64);
+  const radar = radarSvg(radarValues, 64, RADAR_AXES[curMode] || []);
 
   return { itemsHtml, techHtml, detailHtml, radar };
 }
