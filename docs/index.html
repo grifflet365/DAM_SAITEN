@@ -66,6 +66,15 @@
   .entry-score{font-family:'Share Tech Mono',monospace;font-size:1.1rem;color:var(--magenta);background:var(--bg-0);border:1px solid var(--border-1);border-radius:6px;padding:5px 4px;min-width:52px;text-align:center;flex-shrink:0;}
   .entry-body{flex:1;min-width:0;}
   .entry-song{font-size:13.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-1);}
+  .entry-song-link{background:none;border:none;padding:0;margin:0;font:inherit;font-weight:700;color:var(--cyan);text-decoration:underline;cursor:pointer;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;}
+  .entry-head{display:flex;align-items:center;gap:6px;}
+  .entry-chevron{flex-shrink:0;color:var(--text-2);font-size:10px;transition:transform 0.2s;}
+  .entry-chevron.open{transform:rotate(180deg);}
+  .entry-detail{display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border-1);}
+  .entry-detail.open{display:block;}
+  .detail-stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px;}
+  .detail-chart-title{font-size:11px;color:var(--text-2);margin:10px 0 6px;}
+  .detail-chart-wrap{position:relative;width:100%;height:130px;}
   .entry-artist{font-size:11.5px;color:var(--text-2);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .entry-date{font-size:10.5px;color:var(--text-2);opacity:0.8;margin-top:2px;font-family:'Share Tech Mono',monospace;}
   .entry-key{display:inline-block;margin-left:6px;padding:2px 8px;border:1px solid var(--amber);border-radius:4px;color:var(--amber);opacity:1;font-size:16px;font-weight:700;}
@@ -124,6 +133,7 @@
   <p class="footer-note">GITHUB ACTIONS 経由で自動更新</p>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -263,6 +273,9 @@ let curCustomStart = null; // 'YYYY-MM-DD'
 let curCustomEnd = null;   // 'YYYY-MM-DD'
 let curPage = 1;
 const PAGE_SIZE = 100;
+let RENDER_ALL_RECORDS = [];
+let CURRENT_PAGE_RECORDS = [];
+const songChartInstances = {};
 
 function inPeriod(d, period) {
   if (!d) return period === 'all';
@@ -364,13 +377,156 @@ ${sparkline}
 </svg>`;
 }
 
+// この1回分の演奏の全項目(音程・技法回数・ロングトーン等)を組み立てる
+function buildRecordDetailFields(r) {
+  const itemDefs = ITEM_LABELS[curMode] || [];
+  const itemsHtml = itemDefs.map(([label, candidates, divisor]) => {
+    let v = num(pick(r.raw, candidates));
+    if (v === null) return '';
+    if (divisor) v = v / divisor;
+    return `<span class="entry-item">${label} <b>${v.toFixed(divisor ? 3 : 0)}</b></span>`;
+  }).filter(Boolean).join('');
+
+  const techDefs = TECHNIQUE_LABELS[curMode] || [];
+  const techHtml = techDefs.map(([label, field]) => {
+    const v = num(pick(r.raw, [field]));
+    if (v === null) return '';
+    return `<span class="entry-item">${label} <b>${v}回</b></span>`;
+  }).filter(Boolean).join('');
+
+  const detailParts = [];
+  const longtoneSkill = num(pick(r.raw, ['longtoneSkill']));
+  if (longtoneSkill !== null) detailParts.push(`ロングトーン上手さ <b>${(longtoneSkill / 2).toFixed(1)}/5</b>`);
+  const vibratoSkill = num(pick(r.raw, ['vibratoSkill']));
+  if (vibratoSkill !== null) detailParts.push(`ビブラート上手さ <b>${(vibratoSkill / 2).toFixed(1)}/5</b>`);
+  const stability = num(pick(r.raw, ['radarChartStability']));
+  if (stability !== null) detailParts.push(`安定性(震えがち-まっすぐ) <b>${Math.ceil(stability / 10)}/10</b>`);
+  const timing = num(pick(r.raw, ['timing']));
+  if (timing !== null) {
+    const diff = timing - 5;
+    const timingLabel = diff === 0 ? '0' : diff > 0 ? `タメ${diff}` : `走り${-diff}`;
+    detailParts.push(`リズム <b>${timingLabel}</b>`);
+  }
+  const vibratoType = num(pick(r.raw, ['vibratoType']));
+  if (vibratoType !== null && VIBRATO_TYPE_LABELS[vibratoType]) {
+    detailParts.push(`ビブラートタイプ <b>${VIBRATO_TYPE_LABELS[vibratoType]}</b>`);
+  }
+  const vibratoSec = num(pick(r.raw, ['vibratoTotalSecond']));
+  if (vibratoSec !== null) detailParts.push(`ビブラート合計 <b>${Math.floor(vibratoSec / 10)}秒</b>`);
+  const detailHtml = detailParts.map(p => `<span class="entry-item">${p}</span>`).join('');
+
+  const radarValues = (RADAR_AXES[curMode] || []).map(k => num(pick(r.raw, [k])) || 0);
+  const radar = radarSvg(radarValues, 64);
+
+  return { itemsHtml, techHtml, detailHtml, radar };
+}
+
+// 同じ曲(曲名+アーティスト)の全記録から、歌唱回数・平均点・最高点・スコア推移を集計
+function songStats(allRecords, song, artist) {
+  const matches = allRecords.filter(r => r.song === song && r.artist === artist);
+  const scores = matches.map(r => r.score).filter(s => s !== null);
+  const count = matches.length;
+  const avg = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : null;
+  const max = scores.length ? Math.max(...scores) : null;
+  const sorted = matches.slice().filter(r => r.date && r.score !== null).sort((a, b) => a.date - b.date);
+  return { count, avg, max, series: sorted };
+}
+
+function buildDetailPanelHtml(r, idx) {
+  const stats = songStats(RENDER_ALL_RECORDS, r.song, r.artist);
+  const { itemsHtml, techHtml, detailHtml, radar } = buildRecordDetailFields(r);
+
+  const statsCards = `
+    <div class="detail-stats-row">
+      <div class="stat-card"><div class="stat-label">歌唱回数</div><div class="stat-value">${stats.count}回</div></div>
+      <div class="stat-card"><div class="stat-label">平均点</div><div class="stat-value accent-score">${stats.avg !== null ? stats.avg.toFixed(1) : '--'}</div></div>
+      <div class="stat-card"><div class="stat-label">最高点</div><div class="stat-value accent-score">${stats.max !== null ? stats.max.toFixed(1) : '--'}</div></div>
+    </div>`;
+
+  const chartHtml = stats.series.length >= 2 ? `
+    <div class="detail-chart-title">スコア推移</div>
+    <div class="detail-chart-wrap"><canvas id="songChart-${idx}" role="img" aria-label="${escapeHtml(r.song)}のスコア推移"></canvas></div>
+  ` : '';
+
+  return `
+    ${statsCards}
+    ${itemsHtml ? `<div class="entry-items" style="margin-bottom:6px;">${itemsHtml}</div>` : ''}
+    <div style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;">
+      ${radar}
+      <div style="flex:1;min-width:120px;">
+        ${techHtml ? `<div class="entry-items" style="margin-bottom:4px;">${techHtml}</div>` : ''}
+        ${detailHtml ? `<div class="entry-items">${detailHtml}</div>` : ''}
+      </div>
+    </div>
+    ${chartHtml}
+  `;
+}
+
+function renderSongChart(idx, stats) {
+  const canvas = document.getElementById(`songChart-${idx}`);
+  if (!canvas || typeof Chart === 'undefined') return;
+  if (songChartInstances[idx]) {
+    songChartInstances[idx].destroy();
+    delete songChartInstances[idx];
+  }
+  songChartInstances[idx] = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: stats.series.map(r => r.date.toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' })),
+      datasets: [{
+        data: stats.series.map(r => r.score),
+        borderColor: '#2DE9DC',
+        backgroundColor: 'rgba(45,233,220,0.08)',
+        fill: true,
+        tension: 0.3,
+        pointRadius: 3,
+        pointBackgroundColor: '#2DE9DC',
+        borderWidth: 2,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#6C8299', font: { size: 9 } }, grid: { display: false } },
+        y: { ticks: { color: '#6C8299', font: { size: 9 } }, grid: { color: '#1A2740' } },
+      },
+    },
+  });
+}
+
+function toggleSongDetail(idx) {
+  const panel = document.getElementById(`detail-${idx}`);
+  const chev = document.getElementById(`chev-${idx}`);
+  if (!panel) return;
+  const isOpen = panel.classList.contains('open');
+  if (isOpen) {
+    panel.classList.remove('open');
+    panel.innerHTML = '';
+    if (chev) chev.classList.remove('open');
+    if (songChartInstances[idx]) {
+      songChartInstances[idx].destroy();
+      delete songChartInstances[idx];
+    }
+    return;
+  }
+  const r = CURRENT_PAGE_RECORDS[idx];
+  if (!r) return;
+  panel.innerHTML = buildDetailPanelHtml(r, idx);
+  panel.classList.add('open');
+  if (chev) chev.classList.add('open');
+  const stats = songStats(RENDER_ALL_RECORDS, r.song, r.artist);
+  if (stats.series.length >= 2) renderSongChart(idx, stats);
+}
+
 function render() {
   const headerEl = document.getElementById('headerGraphic');
   if (headerEl) {
     headerEl.innerHTML = buildHeaderSvg(DATA.modes[curMode] || [], DATA.updatedAt);
   }
 
-  const records = (DATA.modes[curMode] || []).map(r => {
+  const allRecords = (DATA.modes[curMode] || []).map(r => {
     const rawDateStr = pick(r, FIELD_CANDIDATES.date);
     let timeStr = '';
     if (rawDateStr && /^\d{12,14}$/.test(String(rawDateStr))) {
@@ -385,7 +541,10 @@ function render() {
       date: parseDate(rawDateStr),
       time: timeStr,
     };
-  }).filter(r => inPeriod(r.date, curPeriod));
+  });
+  RENDER_ALL_RECORDS = allRecords;
+
+  const records = allRecords.filter(r => inPeriod(r.date, curPeriod));
 
   records.sort((a, b) => (b.date || 0) - (a.date || 0));
 
@@ -425,65 +584,27 @@ function render() {
   if (curPage < 1) curPage = 1;
   const pageStart = (curPage - 1) * PAGE_SIZE;
   const pageRecords = records.slice(pageStart, pageStart + PAGE_SIZE);
+  CURRENT_PAGE_RECORDS = pageRecords;
 
   if (records.length === 0) {
     historyList.innerHTML = '<div class="empty">この期間の記録はまだありません</div>';
     pagerEl.innerHTML = '';
   } else {
-    historyList.innerHTML = pageRecords.map(r => {
-      const itemDefs = ITEM_LABELS[curMode] || [];
-      const itemsHtml = itemDefs.map(([label, candidates, divisor]) => {
-        let v = num(pick(r.raw, candidates));
-        if (v === null) return '';
-        if (divisor) v = v / divisor;
-        return `<span class="entry-item">${label} <b>${v.toFixed(divisor ? 3 : 0)}</b></span>`;
-      }).filter(Boolean).join('');
-
-      const techDefs = TECHNIQUE_LABELS[curMode] || [];
-      const techHtml = techDefs.map(([label, field]) => {
-        const v = num(pick(r.raw, [field]));
-        if (v === null) return '';
-        return `<span class="entry-item">${label} <b>${v}回</b></span>`;
-      }).filter(Boolean).join('');
-
-      const detailParts = [];
-      const longtoneSkill = num(pick(r.raw, ['longtoneSkill']));
-      if (longtoneSkill !== null) detailParts.push(`ロングトーン上手さ <b>${(longtoneSkill / 2).toFixed(1)}/5</b>`);
-      const vibratoSkill = num(pick(r.raw, ['vibratoSkill']));
-      if (vibratoSkill !== null) detailParts.push(`ビブラート上手さ <b>${(vibratoSkill / 2).toFixed(1)}/5</b>`);
-      const stability = num(pick(r.raw, ['radarChartStability']));
-      if (stability !== null) detailParts.push(`安定性(震えがち-まっすぐ) <b>${Math.ceil(stability / 10)}/10</b>`);
-      const timing = num(pick(r.raw, ['timing']));
-      if (timing !== null) {
-        const diff = timing - 5;
-        const timingLabel = diff === 0 ? '0' : diff > 0 ? `タメ${diff}` : `走り${-diff}`;
-        detailParts.push(`リズム <b>${timingLabel}</b>`);
-      }
-      const vibratoType = num(pick(r.raw, ['vibratoType']));
-      if (vibratoType !== null && VIBRATO_TYPE_LABELS[vibratoType]) {
-        detailParts.push(`ビブラートタイプ <b>${VIBRATO_TYPE_LABELS[vibratoType]}</b>`);
-      }
-      const vibratoSec = num(pick(r.raw, ['vibratoTotalSecond']));
-      if (vibratoSec !== null) detailParts.push(`ビブラート合計 <b>${Math.floor(vibratoSec / 10)}秒</b>`);
-      const detailHtml = detailParts.map(p => `<span class="entry-item">${p}</span>`).join('');
-
-      const radarValues = (RADAR_AXES[curMode] || []).map(k => num(pick(r.raw, [k])) || 0);
-      const radar = radarSvg(radarValues, 52);
-
+    historyList.innerHTML = pageRecords.map((r, i) => {
       const keyVal = pick(r.raw, ['lastPerformKey']);
 
       return `
-      <div class="entry">
+      <div class="entry" data-idx="${i}">
         <div class="entry-score">${r.score !== null ? r.score.toFixed(1) : '--'}</div>
         <div class="entry-body">
-          <div class="entry-song">${escapeHtml(r.song)}</div>
+          <div class="entry-head">
+            <button type="button" class="entry-song-link" data-idx="${i}">${escapeHtml(r.song)}</button>
+            <span class="entry-chevron" id="chev-${i}">▾</span>
+          </div>
           <div class="entry-artist">${escapeHtml(r.artist)}</div>
           <div class="entry-date">${r.date ? r.date.toLocaleDateString('ja-JP') : ''}${r.time ? ' ' + r.time : ''}${keyVal ? ` <span class="entry-key">キー ${escapeHtml(keyVal)}</span>` : ''}</div>
-          ${itemsHtml ? `<div class="entry-items">${itemsHtml}</div>` : ''}
-          ${techHtml ? `<div class="entry-items">${techHtml}</div>` : ''}
-          ${detailHtml ? `<div class="entry-items">${detailHtml}</div>` : ''}
+          <div class="entry-detail" id="detail-${i}"></div>
         </div>
-        ${radar}
       </div>
     `;
     }).join('');
@@ -531,6 +652,13 @@ function onCustomRangeChange() {
 }
 document.getElementById('customStart').addEventListener('change', onCustomRangeChange);
 document.getElementById('customEnd').addEventListener('change', onCustomRangeChange);
+
+document.getElementById('historyList').addEventListener('click', (e) => {
+  const btn = e.target.closest('.entry-song-link');
+  if (!btn) return;
+  const idx = parseInt(btn.dataset.idx, 10);
+  toggleSongDetail(idx);
+});
 
 document.getElementById('modeTabs').addEventListener('click', (e) => {
   const btn = e.target.closest('.tab');
