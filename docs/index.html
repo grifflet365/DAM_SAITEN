@@ -16,7 +16,7 @@
 <style>
   :root{
     --bg-0:#05070C; --bg-1:#0A0E17; --bg-2:#111726; --border-1:#1A2740; --border-2:#243349;
-    --cyan:#2DE9DC; --cyan-dim:#1B9E96; --magenta:#FF3D8A; --magenta-dim:#B32C61;
+    --cyan:#2DE9DC; --cyan-dim:#1B9E96; --magenta:#FF3D8A; --magenta-dim:#B32C61; --amber:#FF8A3D;
     --text-1:#EAF2FA; --text-2:#6C8299;
     --maxw:720px;
   }
@@ -37,23 +37,55 @@
   .tab.active{border-bottom-color:var(--cyan);color:var(--text-1);font-weight:700;}
 
   .stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px;}
-  .item-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:8px;}
+  .item-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-top:8px;}
   .stat-card{background:var(--bg-1);border:1px solid var(--border-1);border-radius:8px;padding:0.75rem;}
   .stat-label{font-size:11px;color:var(--text-2);margin-bottom:4px;}
   .stat-value{font-family:'Share Tech Mono',monospace;font-size:1.25rem;color:var(--cyan);}
   .stat-value.accent-score{color:var(--magenta);}
+
+  .item-card{padding:0.5rem 0.6rem;}
+  .item-card .stat-label{font-size:12px;margin-bottom:2px;}
+  .item-card .stat-value{font-size:24px;}
+
+  .dist-wrap{margin-top:8px;background:var(--bg-1);border:1px solid var(--border-1);border-radius:8px;padding:0.75rem 0.9rem;}
+  .dist-title{font-size:11px;color:var(--text-2);margin-bottom:8px;}
+  .dist-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+  .dist-row:last-child{margin-bottom:0;}
+  .dist-label{width:76px;flex-shrink:0;font-size:11px;color:var(--text-2);font-family:'Share Tech Mono',monospace;}
+  .dist-track{flex:1;height:14px;background:var(--bg-0);border:1px solid var(--border-1);border-radius:4px;overflow:hidden;}
+  .dist-fill{height:100%;border-radius:3px;min-width:2px;transition:width 0.3s;}
+  .dist-count{width:34px;flex-shrink:0;text-align:right;font-size:11px;color:var(--text-1);font-family:'Share Tech Mono',monospace;}
+
+  .custom-range{display:none;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap;}
+  .custom-range.show{display:flex;}
+  .custom-range input[type="date"]{background:var(--bg-1);border:1px solid var(--border-2);color:var(--text-1);border-radius:6px;padding:5px 7px;font-family:'Share Tech Mono',monospace;font-size:12px;color-scheme:dark;}
+  .custom-range span{color:var(--text-2);font-size:12px;}
 
   .history-list{margin-top:14px;}
   .entry{background:var(--bg-1);border:1px solid var(--border-1);border-left:2px solid var(--cyan-dim);border-radius:8px;padding:0.7rem 0.9rem;margin-bottom:8px;display:flex;align-items:flex-start;gap:10px;}
   .entry-score{font-family:'Share Tech Mono',monospace;font-size:1.1rem;color:var(--magenta);background:var(--bg-0);border:1px solid var(--border-1);border-radius:6px;padding:5px 4px;min-width:52px;text-align:center;flex-shrink:0;}
   .entry-body{flex:1;min-width:0;}
   .entry-song{font-size:13.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-1);}
+  .entry-song-link{background:none;border:none;padding:0;margin:0;font:inherit;font-weight:700;color:var(--cyan);text-decoration:underline;cursor:pointer;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;}
+  .entry-head{display:flex;align-items:center;gap:6px;}
+  .entry-chevron{flex-shrink:0;color:var(--text-2);font-size:10px;transition:transform 0.2s;}
+  .entry-chevron.open{transform:rotate(180deg);}
+  .entry-detail{display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border-1);}
+  .entry-detail.open{display:block;}
+  .detail-stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px;}
+  .detail-chart-title{font-size:11px;color:var(--text-2);margin:10px 0 6px;}
+  .detail-chart-wrap{position:relative;width:100%;height:130px;}
   .entry-artist{font-size:11.5px;color:var(--text-2);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .entry-date{font-size:10.5px;color:var(--text-2);opacity:0.8;margin-top:2px;font-family:'Share Tech Mono',monospace;}
+  .entry-key{display:inline-block;margin-left:6px;padding:2px 8px;border:1px solid var(--amber);border-radius:4px;color:var(--amber);opacity:1;font-size:16px;font-weight:700;}
   .entry-items{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:6px;}
   .entry-item{font-size:10.5px;color:var(--text-2);white-space:nowrap;}
   .entry-item b{color:var(--cyan);font-family:'Share Tech Mono',monospace;font-weight:400;}
   .empty{text-align:center;padding:2.5rem 1rem;color:var(--text-2);font-size:13px;}
+  .pager{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:14px;}
+  .pager-btn{background:var(--bg-1);border:1px solid var(--border-2);color:var(--text-1);border-radius:6px;padding:7px 16px;font-size:12.5px;cursor:pointer;font-family:'Share Tech Mono',monospace;}
+  .pager-btn:disabled{opacity:0.35;cursor:default;}
+  .pager-info{font-size:11.5px;color:var(--text-2);font-family:'Share Tech Mono',monospace;}
   .footer-note{text-align:center;font-size:11px;color:var(--text-2);opacity:0.6;padding:2rem 1rem 0.5rem;font-family:'Share Tech Mono',monospace;letter-spacing:0.1em;}
 
   @media (min-width:600px){
@@ -72,6 +104,12 @@
       <button class="chip" data-period="year">今年</button>
       <button class="chip" data-period="30d">直近30日</button>
       <button class="chip" data-period="month">今月</button>
+      <button class="chip" data-period="custom">期間指定</button>
+    </div>
+    <div class="custom-range" id="customRange">
+      <input type="date" id="customStart">
+      <span>〜</span>
+      <input type="date" id="customEnd">
     </div>
 
     <div class="tabs" id="modeTabs">
@@ -82,14 +120,20 @@
 
     <div class="stats-row" id="statsRow"></div>
     <div class="item-grid" id="itemGrid"></div>
+    <div class="dist-wrap">
+      <div class="dist-title">スコア分布</div>
+      <div id="distChart"></div>
+    </div>
 
     <p style="font-size:13px;font-weight:500;margin:20px 0 8px;color:var(--text-1);">履歴</p>
     <div class="history-list" id="historyList"></div>
+    <div class="pager" id="pager"></div>
   </div>
 
   <p class="footer-note">GITHUB ACTIONS 経由で自動更新</p>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -119,10 +163,22 @@ const RADAR_AXES = {
   hearts: ['radarChartPitch','radarChartStability','radarChartExpressive','radarChartHearing','radarChartRhythm','radarChartVibratoLongtone'],
 };
 
-function radarSvg(values, size) {
+// レーダーチャートの軸ラベル(短縮表記)
+const RADAR_LABELS = {
+  radarChartPitch: '音程',
+  radarChartStability: '安定性',
+  radarChartExpressive: '表現力',
+  radarChartRhythm: 'リズム',
+  radarChartVibratoLongtone: 'ロング/ビブ',
+  radarChartHearing: '聴感',
+};
+
+function radarSvg(values, size, axisKeys) {
   const n = values.length;
   if (n < 3) return '';
-  const cx = size / 2, cy = size / 2, R = size / 2 - 3;
+  const pad = 26;
+  const vb = size + pad * 2;
+  const cx = vb / 2, cy = vb / 2, R = size / 2 - 3;
   const pointAt = (v, i) => {
     const angle = -Math.PI / 2 + i * (2 * Math.PI / n);
     const r = (Math.max(0, Math.min(100, v)) / 100) * R;
@@ -132,11 +188,27 @@ function radarSvg(values, size) {
     const angle = -Math.PI / 2 + i * (2 * Math.PI / n);
     return [cx + R * Math.cos(angle), cy + R * Math.sin(angle)];
   };
+  const labelAt = (i) => {
+    const angle = -Math.PI / 2 + i * (2 * Math.PI / n);
+    const lr = R + 13;
+    const x = cx + lr * Math.cos(angle);
+    const y = cy + lr * Math.sin(angle);
+    const cos = Math.cos(angle);
+    const anchor = cos > 0.2 ? 'start' : cos < -0.2 ? 'end' : 'middle';
+    return { x, y, anchor };
+  };
   const poly = values.map((v, i) => pointAt(v, i).join(',')).join(' ');
   const outline = values.map((_, i) => outlineAt(i).join(',')).join(' ');
-  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="flex-shrink:0;">
+  const labelsSvg = (axisKeys || []).map((k, i) => {
+    const label = RADAR_LABELS[k];
+    if (!label) return '';
+    const { x, y, anchor } = labelAt(i);
+    return `<text x="${x}" y="${y}" text-anchor="${anchor}" dominant-baseline="middle" font-family="Noto Sans JP, sans-serif" font-size="8.5" fill="#6C8299">${label}</text>`;
+  }).join('');
+  return `<svg width="${vb}" height="${vb}" viewBox="0 0 ${vb} ${vb}" style="flex-shrink:0;">
     <polygon points="${outline}" fill="none" stroke="#243349" stroke-width="1"/>
     <polygon points="${poly}" fill="rgba(45,233,220,0.22)" stroke="#2DE9DC" stroke-width="1.2"/>
+    ${labelsSvg}
   </svg>`;
 }
 
@@ -176,6 +248,33 @@ const ITEM_LABELS = {
   ],
 };
 
+// スコア分布の区分(下限は含む、上限は含まない。最後だけ95以上)
+const DIST_BINS = [
+  { label: '〜85未満', min: -Infinity, max: 85, color: '#6C8299' },
+  { label: '85〜88', min: 85, max: 88, color: '#4FC3F7' },
+  { label: '88〜90', min: 88, max: 90, color: '#4ADE80' },
+  { label: '90〜93', min: 90, max: 93, color: '#FF3D8A' },
+  { label: '93〜95', min: 93, max: 95, color: '#E63950' },
+  { label: '95以上', min: 95, max: Infinity, color: '#B983FF' },
+];
+
+function renderDistribution(scores) {
+  const distEl = document.getElementById('distChart');
+  if (!distEl) return;
+  const counts = DIST_BINS.map(bin => scores.filter(s => s >= bin.min && s < bin.max).length);
+  const maxCount = Math.max(1, ...counts);
+  distEl.innerHTML = DIST_BINS.map((bin, i) => {
+    const c = counts[i];
+    const pct = Math.max(c > 0 ? 4 : 0, (c / maxCount) * 100);
+    return `
+      <div class="dist-row">
+        <div class="dist-label">${bin.label}</div>
+        <div class="dist-track"><div class="dist-fill" style="width:${pct}%;background:${bin.color};"></div></div>
+        <div class="dist-count">${c}</div>
+      </div>`;
+  }).join('');
+}
+
 function pick(rec, candidates) {
   for (const c of candidates) {
     if (rec[c] !== undefined && rec[c] !== null && rec[c] !== '') return rec[c];
@@ -198,6 +297,13 @@ function parseDate(v) {
 let DATA = { modes: {} };
 let curPeriod = 'all';
 let curMode = 'ai';
+let curCustomStart = null; // 'YYYY-MM-DD'
+let curCustomEnd = null;   // 'YYYY-MM-DD'
+let curPage = 1;
+const PAGE_SIZE = 100;
+let RENDER_ALL_RECORDS = [];
+let CURRENT_PAGE_RECORDS = [];
+const songChartInstances = {};
 
 function inPeriod(d, period) {
   if (!d) return period === 'all';
@@ -208,6 +314,19 @@ function inPeriod(d, period) {
   if (period === '30d') {
     const diff = (now - d) / (1000 * 60 * 60 * 24);
     return diff >= 0 && diff <= 30;
+  }
+  if (period === 'custom') {
+    if (!curCustomStart && !curCustomEnd) return true;
+    const dayMs = 24 * 60 * 60 * 1000;
+    if (curCustomStart) {
+      const start = new Date(curCustomStart + 'T00:00:00');
+      if (d < start) return false;
+    }
+    if (curCustomEnd) {
+      const end = new Date(curCustomEnd + 'T00:00:00').getTime() + dayMs - 1;
+      if (d.getTime() > end) return false;
+    }
+    return true;
   }
   return true;
 }
@@ -286,13 +405,158 @@ ${sparkline}
 </svg>`;
 }
 
+// この1回分の演奏の全項目(音程・技法回数・ロングトーン等)を組み立てる
+function buildRecordDetailFields(r) {
+  const itemDefs = ITEM_LABELS[curMode] || [];
+  const itemsHtml = itemDefs.map(([label, candidates, divisor]) => {
+    let v = num(pick(r.raw, candidates));
+    if (v === null) return '';
+    if (divisor) v = v / divisor;
+    return `<span class="entry-item">${label} <b>${v.toFixed(divisor ? 3 : 0)}</b></span>`;
+  }).filter(Boolean).join('');
+
+  const techDefs = TECHNIQUE_LABELS[curMode] || [];
+  const techHtml = techDefs.map(([label, field]) => {
+    const v = num(pick(r.raw, [field]));
+    if (v === null) return '';
+    return `<span class="entry-item">${label} <b>${v}回</b></span>`;
+  }).filter(Boolean).join('');
+
+  const detailParts = [];
+  const longtoneSkill = num(pick(r.raw, ['longtoneSkill']));
+  if (longtoneSkill !== null) detailParts.push(`ロングトーン上手さ <b>${(longtoneSkill / 2).toFixed(1)}/5</b>`);
+  const vibratoSkill = num(pick(r.raw, ['vibratoSkill']));
+  if (vibratoSkill !== null) detailParts.push(`ビブラート上手さ <b>${(vibratoSkill / 2).toFixed(1)}/5</b>`);
+  const stability = num(pick(r.raw, ['radarChartStability']));
+  if (stability !== null) detailParts.push(`安定性(震えがち-まっすぐ) <b>${Math.ceil(stability / 10)}/10</b>`);
+  const timing = num(pick(r.raw, ['timing']));
+  if (timing !== null) {
+    const diff = timing - 5;
+    const timingLabel = diff === 0 ? '0' : diff > 0 ? `タメ${diff}` : `走り${-diff}`;
+    detailParts.push(`リズム <b>${timingLabel}</b>`);
+  }
+  const vibratoType = num(pick(r.raw, ['vibratoType']));
+  if (vibratoType !== null && VIBRATO_TYPE_LABELS[vibratoType]) {
+    detailParts.push(`ビブラートタイプ <b>${VIBRATO_TYPE_LABELS[vibratoType]}</b>`);
+  }
+  const vibratoSec = num(pick(r.raw, ['vibratoTotalSecond']));
+  if (vibratoSec !== null) detailParts.push(`ビブラート合計 <b>${Math.floor(vibratoSec / 10)}秒</b>`);
+  const intonation = num(pick(r.raw, ['intonation']));
+  if (intonation !== null) detailParts.push(`抑揚 <b>${intonation}点</b>`);
+  const detailHtml = detailParts.map(p => `<span class="entry-item">${p}</span>`).join('');
+
+  const radarValues = (RADAR_AXES[curMode] || []).map(k => num(pick(r.raw, [k])) || 0);
+  const radar = radarSvg(radarValues, 64, RADAR_AXES[curMode] || []);
+
+  return { itemsHtml, techHtml, detailHtml, radar };
+}
+
+// 同じ曲(曲名+アーティスト)の全記録から、歌唱回数・平均点・最高点・スコア推移を集計
+function songStats(allRecords, song, artist) {
+  const matches = allRecords.filter(r => r.song === song && r.artist === artist);
+  const scores = matches.map(r => r.score).filter(s => s !== null);
+  const count = matches.length;
+  const avg = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : null;
+  const max = scores.length ? Math.max(...scores) : null;
+  const sorted = matches.slice().filter(r => r.date && r.score !== null).sort((a, b) => a.date - b.date);
+  return { count, avg, max, series: sorted };
+}
+
+function buildDetailPanelHtml(r, idx) {
+  const stats = songStats(RENDER_ALL_RECORDS, r.song, r.artist);
+  const { itemsHtml, techHtml, detailHtml, radar } = buildRecordDetailFields(r);
+
+  const statsCards = `
+    <div class="detail-stats-row">
+      <div class="stat-card"><div class="stat-label">歌唱回数</div><div class="stat-value">${stats.count}回</div></div>
+      <div class="stat-card"><div class="stat-label">平均点</div><div class="stat-value accent-score">${stats.avg !== null ? stats.avg.toFixed(1) : '--'}</div></div>
+      <div class="stat-card"><div class="stat-label">最高点</div><div class="stat-value accent-score">${stats.max !== null ? stats.max.toFixed(1) : '--'}</div></div>
+    </div>`;
+
+  const chartHtml = stats.series.length >= 2 ? `
+    <div class="detail-chart-title">スコア推移</div>
+    <div class="detail-chart-wrap"><canvas id="songChart-${idx}" role="img" aria-label="${escapeHtml(r.song)}のスコア推移"></canvas></div>
+  ` : '';
+
+  return `
+    ${statsCards}
+    ${itemsHtml ? `<div class="entry-items" style="margin-bottom:6px;">${itemsHtml}</div>` : ''}
+    <div style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;">
+      ${radar}
+      <div style="flex:1;min-width:120px;">
+        ${techHtml ? `<div class="entry-items" style="margin-bottom:4px;">${techHtml}</div>` : ''}
+        ${detailHtml ? `<div class="entry-items">${detailHtml}</div>` : ''}
+      </div>
+    </div>
+    ${chartHtml}
+  `;
+}
+
+function renderSongChart(idx, stats) {
+  const canvas = document.getElementById(`songChart-${idx}`);
+  if (!canvas || typeof Chart === 'undefined') return;
+  if (songChartInstances[idx]) {
+    songChartInstances[idx].destroy();
+    delete songChartInstances[idx];
+  }
+  songChartInstances[idx] = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: stats.series.map(r => r.date.toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' })),
+      datasets: [{
+        data: stats.series.map(r => r.score),
+        borderColor: '#2DE9DC',
+        backgroundColor: 'rgba(45,233,220,0.08)',
+        fill: true,
+        tension: 0.3,
+        pointRadius: 3,
+        pointBackgroundColor: '#2DE9DC',
+        borderWidth: 2,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#6C8299', font: { size: 9 } }, grid: { display: false } },
+        y: { ticks: { color: '#6C8299', font: { size: 9 } }, grid: { color: '#1A2740' } },
+      },
+    },
+  });
+}
+
+function toggleSongDetail(idx) {
+  const panel = document.getElementById(`detail-${idx}`);
+  const chev = document.getElementById(`chev-${idx}`);
+  if (!panel) return;
+  const isOpen = panel.classList.contains('open');
+  if (isOpen) {
+    panel.classList.remove('open');
+    panel.innerHTML = '';
+    if (chev) chev.classList.remove('open');
+    if (songChartInstances[idx]) {
+      songChartInstances[idx].destroy();
+      delete songChartInstances[idx];
+    }
+    return;
+  }
+  const r = CURRENT_PAGE_RECORDS[idx];
+  if (!r) return;
+  panel.innerHTML = buildDetailPanelHtml(r, idx);
+  panel.classList.add('open');
+  if (chev) chev.classList.add('open');
+  const stats = songStats(RENDER_ALL_RECORDS, r.song, r.artist);
+  if (stats.series.length >= 2) renderSongChart(idx, stats);
+}
+
 function render() {
   const headerEl = document.getElementById('headerGraphic');
   if (headerEl) {
     headerEl.innerHTML = buildHeaderSvg(DATA.modes[curMode] || [], DATA.updatedAt);
   }
 
-  const records = (DATA.modes[curMode] || []).map(r => {
+  const allRecords = (DATA.modes[curMode] || []).map(r => {
     const rawDateStr = pick(r, FIELD_CANDIDATES.date);
     let timeStr = '';
     if (rawDateStr && /^\d{12,14}$/.test(String(rawDateStr))) {
@@ -307,7 +571,10 @@ function render() {
       date: parseDate(rawDateStr),
       time: timeStr,
     };
-  }).filter(r => inPeriod(r.date, curPeriod));
+  });
+  RENDER_ALL_RECORDS = allRecords;
+
+  const records = allRecords.filter(r => inPeriod(r.date, curPeriod));
 
   records.sort((a, b) => (b.date || 0) - (a.date || 0));
 
@@ -323,6 +590,8 @@ function render() {
     <div class="stat-card"><div class="stat-label">最高点</div><div class="stat-value accent-score">${max !== null ? max.toFixed(1) : '--'}</div></div>
   `;
 
+  renderDistribution(scores);
+
   const itemGrid = document.getElementById('itemGrid');
   itemGrid.innerHTML = '';
   const itemDefs = ITEM_LABELS[curMode] || [];
@@ -333,72 +602,52 @@ function render() {
       .map(v => (divisor ? v / divisor : v));
     const itemAvg = vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length) : null;
     const card = document.createElement('div');
-    card.className = 'stat-card';
-    card.innerHTML = `<div class="stat-label">${label} 平均</div><div class="stat-value" style="font-size:16px;">${itemAvg !== null ? itemAvg.toFixed(divisor ? 3 : 1) : '--'}</div>`;
+    card.className = 'stat-card item-card';
+    card.innerHTML = `<div class="stat-label">${label} 平均</div><div class="stat-value">${itemAvg !== null ? itemAvg.toFixed(divisor ? 3 : 1) : '--'}</div>`;
     itemGrid.appendChild(card);
   });
 
   const historyList = document.getElementById('historyList');
+  const pagerEl = document.getElementById('pager');
+  const totalPages = Math.max(1, Math.ceil(records.length / PAGE_SIZE));
+  if (curPage > totalPages) curPage = totalPages;
+  if (curPage < 1) curPage = 1;
+  const pageStart = (curPage - 1) * PAGE_SIZE;
+  const pageRecords = records.slice(pageStart, pageStart + PAGE_SIZE);
+  CURRENT_PAGE_RECORDS = pageRecords;
+
   if (records.length === 0) {
     historyList.innerHTML = '<div class="empty">この期間の記録はまだありません</div>';
+    pagerEl.innerHTML = '';
   } else {
-    historyList.innerHTML = records.slice(0, 100).map(r => {
-      const itemDefs = ITEM_LABELS[curMode] || [];
-      const itemsHtml = itemDefs.map(([label, candidates, divisor]) => {
-        let v = num(pick(r.raw, candidates));
-        if (v === null) return '';
-        if (divisor) v = v / divisor;
-        return `<span class="entry-item">${label} <b>${v.toFixed(divisor ? 3 : 0)}</b></span>`;
-      }).filter(Boolean).join('');
-
-      const techDefs = TECHNIQUE_LABELS[curMode] || [];
-      const techHtml = techDefs.map(([label, field]) => {
-        const v = num(pick(r.raw, [field]));
-        if (v === null) return '';
-        return `<span class="entry-item">${label} <b>${v}回</b></span>`;
-      }).filter(Boolean).join('');
-
-      const detailParts = [];
-      const longtoneSkill = num(pick(r.raw, ['longtoneSkill']));
-      if (longtoneSkill !== null) detailParts.push(`ロングトーン上手さ <b>${(longtoneSkill / 2).toFixed(1)}/5</b>`);
-      const vibratoSkill = num(pick(r.raw, ['vibratoSkill']));
-      if (vibratoSkill !== null) detailParts.push(`ビブラート上手さ <b>${(vibratoSkill / 2).toFixed(1)}/5</b>`);
-      const stability = num(pick(r.raw, ['radarChartStability']));
-      if (stability !== null) detailParts.push(`安定性(震えがち-まっすぐ) <b>${Math.ceil(stability / 10)}/10</b>`);
-      const timing = num(pick(r.raw, ['timing']));
-      if (timing !== null) {
-        const diff = timing - 5;
-        const timingLabel = diff === 0 ? '0' : diff > 0 ? `タメ${diff}` : `走り${-diff}`;
-        detailParts.push(`リズム <b>${timingLabel}</b>`);
-      }
-      const vibratoType = num(pick(r.raw, ['vibratoType']));
-      if (vibratoType !== null && VIBRATO_TYPE_LABELS[vibratoType]) {
-        detailParts.push(`ビブラートタイプ <b>${VIBRATO_TYPE_LABELS[vibratoType]}</b>`);
-      }
-      const vibratoSec = num(pick(r.raw, ['vibratoTotalSecond']));
-      if (vibratoSec !== null) detailParts.push(`ビブラート合計 <b>${Math.floor(vibratoSec / 10)}秒</b>`);
-      const intonation = num(pick(r.raw, ['intonation']));
-      if (intonation !== null) detailParts.push(`抑揚 <b>${intonation}点</b>`);
-      const detailHtml = detailParts.map(p => `<span class="entry-item">${p}</span>`).join('');
-
-      const radarValues = (RADAR_AXES[curMode] || []).map(k => num(pick(r.raw, [k])) || 0);
-      const radar = radarSvg(radarValues, 52);
+    historyList.innerHTML = pageRecords.map((r, i) => {
+      const keyVal = pick(r.raw, ['lastPerformKey']);
 
       return `
-      <div class="entry">
+      <div class="entry" data-idx="${i}">
         <div class="entry-score">${r.score !== null ? r.score.toFixed(1) : '--'}</div>
         <div class="entry-body">
-          <div class="entry-song">${escapeHtml(r.song)}</div>
+          <div class="entry-head">
+            <button type="button" class="entry-song-link" data-idx="${i}">${escapeHtml(r.song)}</button>
+            <span class="entry-chevron" id="chev-${i}">▾</span>
+          </div>
           <div class="entry-artist">${escapeHtml(r.artist)}</div>
-          <div class="entry-date">${r.date ? r.date.toLocaleDateString('ja-JP') : ''}${r.time ? ' ' + r.time : ''}</div>
-          ${itemsHtml ? `<div class="entry-items">${itemsHtml}</div>` : ''}
-          ${techHtml ? `<div class="entry-items">${techHtml}</div>` : ''}
-          ${detailHtml ? `<div class="entry-items">${detailHtml}</div>` : ''}
+          <div class="entry-date">${r.date ? r.date.toLocaleDateString('ja-JP') : ''}${r.time ? ' ' + r.time : ''}${keyVal ? ` <span class="entry-key">キー ${escapeHtml(keyVal)}</span>` : ''}</div>
+          <div class="entry-detail" id="detail-${i}"></div>
         </div>
-        ${radar}
       </div>
     `;
     }).join('');
+
+    pagerEl.innerHTML = `
+      <button class="pager-btn" id="pagerPrev" ${curPage <= 1 ? 'disabled' : ''}>← 前へ</button>
+      <span class="pager-info">${curPage} / ${totalPages} ページ(全${records.length}件)</span>
+      <button class="pager-btn" id="pagerNext" ${curPage >= totalPages ? 'disabled' : ''}>次へ →</button>
+    `;
+    const prevBtn = document.getElementById('pagerPrev');
+    const nextBtn = document.getElementById('pagerNext');
+    if (prevBtn) prevBtn.addEventListener('click', () => { curPage--; render(); });
+    if (nextBtn) nextBtn.addEventListener('click', () => { curPage++; render(); });
   }
 }
 
@@ -414,7 +663,31 @@ document.getElementById('periodBar').addEventListener('click', (e) => {
   document.querySelectorAll('#periodBar .chip').forEach(c => c.classList.remove('active'));
   btn.classList.add('active');
   curPeriod = btn.dataset.period;
+  curPage = 1;
+
+  const customRangeEl = document.getElementById('customRange');
+  if (curPeriod === 'custom') {
+    customRangeEl.classList.add('show');
+  } else {
+    customRangeEl.classList.remove('show');
+  }
   render();
+});
+
+function onCustomRangeChange() {
+  curCustomStart = document.getElementById('customStart').value || null;
+  curCustomEnd = document.getElementById('customEnd').value || null;
+  curPage = 1;
+  if (curPeriod === 'custom') render();
+}
+document.getElementById('customStart').addEventListener('change', onCustomRangeChange);
+document.getElementById('customEnd').addEventListener('change', onCustomRangeChange);
+
+document.getElementById('historyList').addEventListener('click', (e) => {
+  const btn = e.target.closest('.entry-song-link');
+  if (!btn) return;
+  const idx = parseInt(btn.dataset.idx, 10);
+  toggleSongDetail(idx);
 });
 
 document.getElementById('modeTabs').addEventListener('click', (e) => {
@@ -423,6 +696,7 @@ document.getElementById('modeTabs').addEventListener('click', (e) => {
   document.querySelectorAll('#modeTabs .tab').forEach(c => c.classList.remove('active'));
   btn.classList.add('active');
   curMode = btn.dataset.mode;
+  curPage = 1;
   render();
 });
 
