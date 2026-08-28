@@ -574,22 +574,17 @@ function buildDetailPanelHtml(r, idx) {
     </div>
   ` : '';
 
-  const vocalHighRaw = num(pick(r.raw, ['vocalRangeHighest']));
-  const vocalLowRaw = num(pick(r.raw, ['vocalRangeLowest']));
+  const vocalHigh = num(pick(r.raw, ['vocalRangeHighest']));
+  const vocalLow = num(pick(r.raw, ['vocalRangeLowest']));
   const singHighRaw = num(pick(r.raw, ['singingRangeHighest']));
   const singLowRaw = num(pick(r.raw, ['singingRangeLowest']));
-  // まず設定キー(lastPerformKey)の分だけ曲の音域を補正(+3ならキーを3上げて歌っているので、
-  // その回に実際に求められた音の高さは原曲より3半音高い)
-  const keyStr = pick(r.raw, ['lastPerformKey']);
-  const keyShift = keyStr !== undefined && keyStr !== null && !isNaN(parseInt(keyStr, 10)) ? parseInt(keyStr, 10) : 0;
-  const vocalHighKeyAdj = vocalHighRaw !== null ? vocalHighRaw + keyShift : null;
-  const vocalLowKeyAdj = vocalLowRaw !== null ? vocalLowRaw + keyShift : null;
-  // その上でなお重なりが少なければ、オクターブ違いを疑って自動調整
-  const { singLow, singHigh, shifted } = adjustSingingOctave(vocalLowKeyAdj, vocalHighKeyAdj, singLowRaw, singHighRaw);
-  const keyboardSvg = buildKeyboardSvg(vocalLowKeyAdj, vocalHighKeyAdj, singLow, singHigh);
+  // 曲の音域と自分の音域は元々ほぼ一致した状態で記録されている(設定キー分は
+  // DAM側の音域データにすでに反映済み)。重なりが少ない場合だけオクターブ違いを疑って自動調整する
+  const { singLow, singHigh, shifted } = adjustSingingOctave(vocalLow, vocalHigh, singLowRaw, singHighRaw);
+  const keyboardSvg = buildKeyboardSvg(vocalLow, vocalHigh, singLow, singHigh);
   const keyboardHtml = keyboardSvg ? `
     <div class="detail-chart-title">声域(曲の音域 / 自分が出した音域)${shifted ? `<span style="color:#FF8A3D;font-weight:400;"> ※オクターブ${shifted > 0 ? '上' : '下'}に自動調整</span>` : ''}</div>
-    <div style="margin-bottom:4px;">${keyboardSvg}</div>
+    <div style="margin-bottom:4px;transform:scale(0.7);transform-origin:left top;">${keyboardSvg}</div>
     <div style="display:flex;gap:14px;justify-content:center;font-size:10.5px;color:var(--text-2);margin-bottom:6px;">
       <span><span style="display:inline-block;width:9px;height:9px;background:rgba(45,233,220,0.5);border:1px solid #2DE9DC;border-radius:2px;margin-right:4px;"></span>曲の音域</span>
       <span><span style="display:inline-block;width:9px;height:9px;background:rgba(255,61,138,0.5);border:1px solid #FF3D8A;border-radius:2px;margin-right:4px;"></span>自分が出した音域</span>
@@ -599,7 +594,7 @@ function buildDetailPanelHtml(r, idx) {
   const intervalArr = getSectionArray(r.raw, 'intervalGraphPointsSection');
   const intervalHtml = intervalArr ? `
     <div class="detail-chart-title">音程の区間別グラフ(24分割)</div>
-    <div class="detail-chart-wrap"><canvas id="intervalChart-${idx}" role="img" aria-label="音程の区間別グラフ"></canvas></div>
+    <div class="detail-chart-wrap" style="height:65px;"><canvas id="intervalChart-${idx}" role="img" aria-label="音程の区間別グラフ"></canvas></div>
   ` : '';
 
   const secConfig = SECTION_CHART_CONFIG[curMode];
@@ -611,7 +606,7 @@ function buildDetailPanelHtml(r, idx) {
     if (hasData) {
       techChartHtml = `
         <div class="detail-chart-title">${secConfig.title}</div>
-        <div class="detail-chart-wrap"><canvas id="techChart-${idx}" role="img" aria-label="${secConfig.title}"></canvas></div>
+        <div class="detail-chart-wrap" style="height:65px;"><canvas id="techChart-${idx}" role="img" aria-label="${secConfig.title}"></canvas></div>
       `;
     }
   }
@@ -626,8 +621,8 @@ function buildDetailPanelHtml(r, idx) {
     ${itemsHtml ? `<div class="entry-items" style="margin-bottom:6px;">${itemsHtml}</div>` : ''}
     ${techHtml ? `<div class="entry-items" style="margin-bottom:4px;">${techHtml}</div>` : ''}
     ${detailHtml ? `<div class="entry-items" style="margin-bottom:6px;">${detailHtml}</div>` : ''}
-    ${chartHtml}
     ${radarHtml}
+    ${chartHtml}
     ${intervalHtml}
     ${techChartHtml}
     ${keyboardHtml}
