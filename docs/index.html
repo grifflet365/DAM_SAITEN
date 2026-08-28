@@ -173,45 +173,6 @@ const RADAR_LABELS = {
   radarChartHearing: '聴感',
 };
 
-function radarSvg(values, size, axisKeys) {
-  const n = values.length;
-  if (n < 3) return '';
-  const pad = 26;
-  const vb = size + pad * 2;
-  const cx = vb / 2, cy = vb / 2, R = size / 2 - 3;
-  const pointAt = (v, i) => {
-    const angle = -Math.PI / 2 + i * (2 * Math.PI / n);
-    const r = (Math.max(0, Math.min(100, v)) / 100) * R;
-    return [cx + r * Math.cos(angle), cy + r * Math.sin(angle)];
-  };
-  const outlineAt = (i) => {
-    const angle = -Math.PI / 2 + i * (2 * Math.PI / n);
-    return [cx + R * Math.cos(angle), cy + R * Math.sin(angle)];
-  };
-  const labelAt = (i) => {
-    const angle = -Math.PI / 2 + i * (2 * Math.PI / n);
-    const lr = R + 13;
-    const x = cx + lr * Math.cos(angle);
-    const y = cy + lr * Math.sin(angle);
-    const cos = Math.cos(angle);
-    const anchor = cos > 0.2 ? 'start' : cos < -0.2 ? 'end' : 'middle';
-    return { x, y, anchor };
-  };
-  const poly = values.map((v, i) => pointAt(v, i).join(',')).join(' ');
-  const outline = values.map((_, i) => outlineAt(i).join(',')).join(' ');
-  const labelsSvg = (axisKeys || []).map((k, i) => {
-    const label = RADAR_LABELS[k];
-    if (!label) return '';
-    const { x, y, anchor } = labelAt(i);
-    return `<text x="${x}" y="${y}" text-anchor="${anchor}" dominant-baseline="middle" font-family="Noto Sans JP, sans-serif" font-size="8.5" fill="#6C8299">${label}</text>`;
-  }).join('');
-  return `<svg width="${vb}" height="${vb}" viewBox="0 0 ${vb} ${vb}" style="flex-shrink:0;">
-    <polygon points="${outline}" fill="none" stroke="#243349" stroke-width="1"/>
-    <polygon points="${poly}" fill="rgba(45,233,220,0.22)" stroke="#2DE9DC" stroke-width="1.2"/>
-    ${labelsSvg}
-  </svg>`;
-}
-
 // ビブラートタイプ(1〜14の通し番号 → 公式の表示名)
 const VIBRATO_TYPE_LABELS = {
   1: 'ボックス形(A-1)', 2: 'ボックス形(A-2)', 3: 'ボックス形(A-3)',
@@ -304,6 +265,7 @@ const PAGE_SIZE = 100;
 let RENDER_ALL_RECORDS = [];
 let CURRENT_PAGE_RECORDS = [];
 const songChartInstances = {};
+const extraChartInstances = {};
 
 function inPeriod(d, period) {
   if (!d) return period === 'all';
@@ -406,6 +368,118 @@ ${sparkline}
 }
 
 // この1回分の演奏の全項目(音程・技法回数・ロングトーン等)を組み立てる
+// レーダー軸 → 全国平均フィールドの対応
+const RADAR_AVG_FIELDS = {
+  radarChartPitch: 'nationalAveragePitch',
+  radarChartStability: 'nationalAverageStability',
+  radarChartExpressive: 'nationalAverageExpression',
+  radarChartRhythm: 'nationalAverageRhythm',
+  radarChartVibratoLongtone: 'nationalAverageVibratoAndLongtone',
+  radarChartHearing: 'nationalAverageHearing',
+};
+
+// モード別の「4つ目のグラフ」設定(Ai=加点減点の2色棒グラフ、DX-G/Ai Heart=単色棒グラフ)
+const SECTION_CHART_CONFIG = {
+  ai: { type: 'diverging', addPrefix: 'aiSensitivityGraphAddPointsSection', deductPrefix: 'aiSensitivityGraphDeductPointsSection', title: 'Ai感性 加点・減点(24分割)', addColor: '#2DE9DC', deductColor: '#FF3D8A' },
+  dxg: { type: 'single', prefix: 'expressionGraphPointsSection', title: '表現力の区間別グラフ(24分割)', color: '#FF8A3D' },
+  hearts: { type: 'single', prefix: 'hearingGraphPtSection', title: '聴感の区間別グラフ(24分割)', color: '#FF3D8A' },
+};
+
+// 24分割のセクションフィールド(例: intervalGraphPointsSection01〜24)を配列にして取り出す
+function getSectionArray(raw, prefix) {
+  const arr = [];
+  let anyValue = false;
+  for (let i = 1; i <= 24; i++) {
+    const key = prefix + String(i).padStart(2, '0');
+    const v = num(pick(raw, [key]));
+    if (v !== null) anyValue = true;
+    arr.push(v);
+  }
+  return anyValue ? arr : null;
+}
+
+// 声域を鍵盤SVGとして描画(曲の音域 vocalRange と自分が出した音域 singingRange をMIDIノート番号として重ねる)
+function buildKeyboardSvg(vocalLow, vocalHigh, singLow, singHigh) {
+  const values = [vocalLow, vocalHigh, singLow, singHigh].filter(v => v !== null && v !== undefined && !isNaN(v));
+  if (!values.length) return '';
+  const isBlack = n => [1, 3, 6, 8, 10].includes(((n % 12) + 12) % 12);
+  let lowMidi = Math.min(...values) - 3;
+  let highMidi = Math.max(...values) + 3;
+  let guard = 0;
+  while (isBlack(lowMidi) && guard++ < 12) lowMidi--;
+  guard = 0;
+  while (isBlack(highMidi) && guard++ < 12) highMidi++;
+
+  const whiteIndex = n => { const t = [0, 0, 1, 1, 2, 3, 3, 4, 4, 5, 5, 6]; return Math.floor(n / 12) * 7 + t[((n % 12) + 12) % 12]; };
+  const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+  const noteName = n => noteNames[((n % 12) + 12) % 12] + (Math.floor(n / 12) - 1);
+
+  const keys = [];
+  for (let n = lowMidi; n <= highMidi; n++) keys.push(n);
+  const whiteKeys = keys.filter(n => !isBlack(n));
+  const wWidth = 20, wHeight = 68, bWidth = 12, bHeight = 40;
+  const svgWidth = whiteKeys.length * wWidth;
+  const startWhiteIdx = whiteIndex(lowMidi);
+  const xFor = n => (whiteIndex(n) - startWhiteIdx) * wWidth;
+
+  const hasA = vocalLow !== null && vocalLow !== undefined && vocalHigh !== null && vocalHigh !== undefined;
+  const hasB = singLow !== null && singLow !== undefined && singHigh !== null && singHigh !== undefined;
+
+  let svg = `<svg width="100%" height="${wHeight}" viewBox="0 0 ${svgWidth} ${wHeight}" style="display:block;" role="img" aria-label="声域を表す鍵盤">`;
+
+  const band = (lo, hi, color) => {
+    const x1 = xFor(lo);
+    const x2 = xFor(hi) + (isBlack(hi) ? bWidth : wWidth);
+    svg += `<rect x="${x1}" y="0" width="${x2 - x1}" height="${wHeight}" fill="${color}" opacity="0.16"/>`;
+  };
+  if (hasA) band(vocalLow, vocalHigh, '#2DE9DC');
+  if (hasB) band(singLow, singHigh, '#FF3D8A');
+
+  whiteKeys.forEach(n => {
+    const x = xFor(n);
+    const inA = hasA && n >= vocalLow && n <= vocalHigh;
+    const inB = hasB && n >= singLow && n <= singHigh;
+    let fill = '#0A0E17';
+    if (inA && inB) fill = '#7A5C86';
+    else if (inA) fill = 'rgba(45,233,220,0.35)';
+    else if (inB) fill = 'rgba(255,61,138,0.35)';
+    svg += `<rect x="${x}" y="0" width="${wWidth - 1}" height="${wHeight}" fill="${fill}" stroke="#1A2740" stroke-width="1"/>`;
+    if (((n % 12) + 12) % 12 === 0) {
+      svg += `<text x="${x + (wWidth - 1) / 2}" y="${wHeight - 5}" text-anchor="middle" font-size="7.5" fill="#6C8299" font-family="Share Tech Mono, monospace">${noteName(n)}</text>`;
+    }
+  });
+  keys.filter(isBlack).forEach(n => {
+    const x = xFor(n) - bWidth / 2;
+    const inA = hasA && n >= vocalLow && n <= vocalHigh;
+    const inB = hasB && n >= singLow && n <= singHigh;
+    let fill = '#05070C';
+    if (inA && inB) fill = '#5A3F63';
+    else if (inA) fill = 'rgba(45,233,220,0.55)';
+    else if (inB) fill = 'rgba(255,61,138,0.55)';
+    svg += `<rect x="${x}" y="0" width="${bWidth}" height="${bHeight}" fill="${fill}" stroke="#243349" stroke-width="1"/>`;
+  });
+
+  if (hasA) {
+    [vocalLow, vocalHigh].forEach(n => {
+      const isB = isBlack(n);
+      const cx = isB ? xFor(n) : xFor(n) + (wWidth - 1) / 2;
+      const y = isB ? bHeight + 9 : wHeight - 22;
+      svg += `<text x="${cx}" y="${y}" text-anchor="middle" font-size="8" fill="#2DE9DC" font-family="Share Tech Mono, monospace" font-weight="700">${noteName(n)}</text>`;
+    });
+  }
+  if (hasB) {
+    [singLow, singHigh].forEach(n => {
+      const isB = isBlack(n);
+      const cx = isB ? xFor(n) : xFor(n) + (wWidth - 1) / 2;
+      const y = isB ? bHeight + 18 : wHeight - 12;
+      svg += `<text x="${cx}" y="${y}" text-anchor="middle" font-size="8" fill="#FF3D8A" font-family="Share Tech Mono, monospace" font-weight="700">${noteName(n)}</text>`;
+    });
+  }
+
+  svg += `</svg>`;
+  return svg;
+}
+
 function buildRecordDetailFields(r) {
   const itemDefs = ITEM_LABELS[curMode] || [];
   const itemsHtml = itemDefs.map(([label, candidates, divisor]) => {
@@ -445,10 +519,7 @@ function buildRecordDetailFields(r) {
   if (intonation !== null) detailParts.push(`抑揚 <b>${intonation}点</b>`);
   const detailHtml = detailParts.map(p => `<span class="entry-item">${p}</span>`).join('');
 
-  const radarValues = (RADAR_AXES[curMode] || []).map(k => num(pick(r.raw, [k])) || 0);
-  const radar = radarSvg(radarValues, 64, RADAR_AXES[curMode] || []);
-
-  return { itemsHtml, techHtml, detailHtml, radar };
+  return { itemsHtml, techHtml, detailHtml };
 }
 
 // 同じ曲(曲名+アーティスト)の全記録から、歌唱回数・平均点・最高点・スコア推移を集計
@@ -464,7 +535,7 @@ function songStats(allRecords, song, artist) {
 
 function buildDetailPanelHtml(r, idx) {
   const stats = songStats(RENDER_ALL_RECORDS, r.song, r.artist);
-  const { itemsHtml, techHtml, detailHtml, radar } = buildRecordDetailFields(r);
+  const { itemsHtml, techHtml, detailHtml } = buildRecordDetailFields(r);
 
   const statsCards = `
     <div class="detail-stats-row">
@@ -472,6 +543,50 @@ function buildDetailPanelHtml(r, idx) {
       <div class="stat-card"><div class="stat-label">平均点</div><div class="stat-value accent-score">${stats.avg !== null ? stats.avg.toFixed(1) : '--'}</div></div>
       <div class="stat-card"><div class="stat-label">最高点</div><div class="stat-value accent-score">${stats.max !== null ? stats.max.toFixed(1) : '--'}</div></div>
     </div>`;
+
+  const axisKeys = RADAR_AXES[curMode] || [];
+  const radarHtml = axisKeys.length >= 3 ? `
+    <div class="detail-chart-title">音程バランス(自分 / 全国平均)</div>
+    <div class="detail-chart-wrap" style="height:180px;"><canvas id="radarChart-${idx}" role="img" aria-label="自分と全国平均を重ねたレーダーチャート"></canvas></div>
+    <div style="display:flex;gap:14px;justify-content:center;font-size:10.5px;color:var(--text-2);margin:4px 0 2px;">
+      <span><span style="display:inline-block;width:9px;height:9px;background:#2DE9DC;border-radius:2px;margin-right:4px;"></span>自分</span>
+      <span><span style="display:inline-block;width:12px;height:0;border-top:2px dashed #8B93A8;margin-right:4px;vertical-align:middle;"></span>全国平均</span>
+    </div>
+  ` : '';
+
+  const vocalHigh = num(pick(r.raw, ['vocalRangeHighest']));
+  const vocalLow = num(pick(r.raw, ['vocalRangeLowest']));
+  const singHigh = num(pick(r.raw, ['singingRangeHighest']));
+  const singLow = num(pick(r.raw, ['singingRangeLowest']));
+  const keyboardSvg = buildKeyboardSvg(vocalLow, vocalHigh, singLow, singHigh);
+  const keyboardHtml = keyboardSvg ? `
+    <div class="detail-chart-title">声域(曲の音域 / 自分が出した音域)</div>
+    <div style="margin-bottom:4px;">${keyboardSvg}</div>
+    <div style="display:flex;gap:14px;justify-content:center;font-size:10.5px;color:var(--text-2);margin-bottom:6px;">
+      <span><span style="display:inline-block;width:9px;height:9px;background:rgba(45,233,220,0.5);border:1px solid #2DE9DC;border-radius:2px;margin-right:4px;"></span>曲の音域</span>
+      <span><span style="display:inline-block;width:9px;height:9px;background:rgba(255,61,138,0.5);border:1px solid #FF3D8A;border-radius:2px;margin-right:4px;"></span>自分が出した音域</span>
+    </div>
+  ` : '';
+
+  const intervalArr = getSectionArray(r.raw, 'intervalGraphPointsSection');
+  const intervalHtml = intervalArr ? `
+    <div class="detail-chart-title">音程の区間別グラフ(24分割)</div>
+    <div class="detail-chart-wrap"><canvas id="intervalChart-${idx}" role="img" aria-label="音程の区間別グラフ"></canvas></div>
+  ` : '';
+
+  const secConfig = SECTION_CHART_CONFIG[curMode];
+  let techChartHtml = '';
+  if (secConfig) {
+    const hasData = secConfig.type === 'diverging'
+      ? (getSectionArray(r.raw, secConfig.addPrefix) || getSectionArray(r.raw, secConfig.deductPrefix))
+      : getSectionArray(r.raw, secConfig.prefix);
+    if (hasData) {
+      techChartHtml = `
+        <div class="detail-chart-title">${secConfig.title}</div>
+        <div class="detail-chart-wrap"><canvas id="techChart-${idx}" role="img" aria-label="${secConfig.title}"></canvas></div>
+      `;
+    }
+  }
 
   const chartHtml = stats.series.length >= 2 ? `
     <div class="detail-chart-title">スコア推移</div>
@@ -481,13 +596,12 @@ function buildDetailPanelHtml(r, idx) {
   return `
     ${statsCards}
     ${itemsHtml ? `<div class="entry-items" style="margin-bottom:6px;">${itemsHtml}</div>` : ''}
-    <div style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;">
-      ${radar}
-      <div style="flex:1;min-width:120px;">
-        ${techHtml ? `<div class="entry-items" style="margin-bottom:4px;">${techHtml}</div>` : ''}
-        ${detailHtml ? `<div class="entry-items">${detailHtml}</div>` : ''}
-      </div>
-    </div>
+    ${techHtml ? `<div class="entry-items" style="margin-bottom:4px;">${techHtml}</div>` : ''}
+    ${detailHtml ? `<div class="entry-items" style="margin-bottom:6px;">${detailHtml}</div>` : ''}
+    ${radarHtml}
+    ${keyboardHtml}
+    ${intervalHtml}
+    ${techChartHtml}
     ${chartHtml}
   `;
 }
@@ -526,6 +640,121 @@ function renderSongChart(idx, stats) {
   });
 }
 
+// レーダー(自分 vs 全国平均)・音程区間別グラフ・モード別の4つ目のグラフをまとめて描画
+function renderDetailCharts(idx, r) {
+  if (typeof Chart === 'undefined') return;
+  extraChartInstances[idx] = extraChartInstances[idx] || [];
+
+  const axisKeys = RADAR_AXES[curMode] || [];
+  const radarCanvas = document.getElementById(`radarChart-${idx}`);
+  if (radarCanvas && axisKeys.length >= 3) {
+    const selfValues = axisKeys.map(k => num(pick(r.raw, [k])) || 0);
+    const avgValues = axisKeys.map(k => {
+      const avgField = RADAR_AVG_FIELDS[k];
+      return avgField ? num(pick(r.raw, [avgField])) : null;
+    });
+    const hasAvg = avgValues.some(v => v !== null);
+    const datasets = [{
+      label: '自分',
+      data: selfValues,
+      borderColor: '#2DE9DC',
+      backgroundColor: 'rgba(45,233,220,0.18)',
+      pointRadius: 2,
+      borderWidth: 1.5,
+    }];
+    if (hasAvg) {
+      datasets.push({
+        label: '全国平均',
+        data: avgValues.map(v => v === null ? 0 : v),
+        borderColor: '#8B93A8',
+        backgroundColor: 'rgba(139,147,168,0.05)',
+        borderDash: [4, 3],
+        pointRadius: 0,
+        borderWidth: 1.5,
+      });
+    }
+    extraChartInstances[idx].push(new Chart(radarCanvas, {
+      type: 'radar',
+      data: { labels: axisKeys.map(k => RADAR_LABELS[k] || ''), datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          r: {
+            min: 0, max: 100,
+            ticks: { display: false },
+            grid: { color: '#1A2740' },
+            angleLines: { color: '#1A2740' },
+            pointLabels: { color: '#6C8299', font: { size: 9 } },
+          },
+        },
+      },
+    }));
+  }
+
+  const intervalArr = getSectionArray(r.raw, 'intervalGraphPointsSection');
+  const intervalCanvas = document.getElementById(`intervalChart-${idx}`);
+  if (intervalCanvas && intervalArr) {
+    extraChartInstances[idx].push(new Chart(intervalCanvas, {
+      type: 'line',
+      data: {
+        labels: intervalArr.map((_, i) => i + 1),
+        datasets: [{
+          data: intervalArr,
+          borderColor: '#2DE9DC',
+          backgroundColor: 'rgba(45,233,220,0.08)',
+          fill: true,
+          tension: 0.3,
+          pointRadius: 0,
+          borderWidth: 1.5,
+          spanGaps: true,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: '#6C8299', font: { size: 8 }, maxTicksLimit: 6 }, grid: { display: false } },
+          y: { min: 0, max: 100, ticks: { color: '#6C8299', font: { size: 8 } }, grid: { color: '#1A2740' } },
+        },
+      },
+    }));
+  }
+
+  const secConfig = SECTION_CHART_CONFIG[curMode];
+  const techCanvas = document.getElementById(`techChart-${idx}`);
+  if (techCanvas && secConfig) {
+    let datasets, stacked = false;
+    if (secConfig.type === 'diverging') {
+      const addArr = getSectionArray(r.raw, secConfig.addPrefix) || Array(24).fill(0);
+      const deductArr = getSectionArray(r.raw, secConfig.deductPrefix) || Array(24).fill(0);
+      datasets = [
+        { data: addArr.map(v => v || 0), backgroundColor: secConfig.addColor },
+        { data: deductArr.map(v => v ? -Math.abs(v) : 0), backgroundColor: secConfig.deductColor },
+      ];
+      stacked = true;
+    } else {
+      const arr = getSectionArray(r.raw, secConfig.prefix) || [];
+      datasets = [{ data: arr, backgroundColor: secConfig.color, borderRadius: 2 }];
+    }
+    extraChartInstances[idx].push(new Chart(techCanvas, {
+      type: 'bar',
+      data: { labels: Array.from({ length: 24 }, (_, i) => i + 1), datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { stacked, ticks: { color: '#6C8299', font: { size: 8 }, maxTicksLimit: 6 }, grid: { display: false } },
+          y: { stacked, ticks: { color: '#6C8299', font: { size: 8 } }, grid: { color: '#1A2740' } },
+        },
+      },
+    }));
+  }
+}
+
 function toggleSongDetail(idx) {
   const panel = document.getElementById(`detail-${idx}`);
   const chev = document.getElementById(`chev-${idx}`);
@@ -539,6 +768,10 @@ function toggleSongDetail(idx) {
       songChartInstances[idx].destroy();
       delete songChartInstances[idx];
     }
+    if (extraChartInstances[idx]) {
+      extraChartInstances[idx].forEach(c => c.destroy());
+      delete extraChartInstances[idx];
+    }
     return;
   }
   const r = CURRENT_PAGE_RECORDS[idx];
@@ -548,6 +781,7 @@ function toggleSongDetail(idx) {
   if (chev) chev.classList.add('open');
   const stats = songStats(RENDER_ALL_RECORDS, r.song, r.artist);
   if (stats.series.length >= 2) renderSongChart(idx, stats);
+  renderDetailCharts(idx, r);
 }
 
 function render() {
