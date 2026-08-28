@@ -399,6 +399,26 @@ function getSectionArray(raw, prefix) {
 }
 
 // 声域を鍵盤SVGとして描画(曲の音域 vocalRange と自分が出した音域 singingRange をMIDIノート番号として重ねる)
+// 曲の音域と自分の音域の重なりが少ない場合、オクターブ違いの可能性を疑って
+// ±12半音ずらして重なりが明らかに改善するならそちらを採用する
+function adjustSingingOctave(vocalLow, vocalHigh, singLow, singHigh) {
+  if (vocalLow === null || vocalHigh === null || singLow === null || singHigh === null) {
+    return { singLow, singHigh, shifted: 0 };
+  }
+  const overlapLen = (loA, hiA, loB, hiB) => Math.max(0, Math.min(hiA, hiB) - Math.max(loA, loB));
+  const candidates = [0, -12, 12].map(shift => {
+    const lo = singLow + shift, hi = singHigh + shift;
+    return { shift, lo, hi, overlap: overlapLen(vocalLow, vocalHigh, lo, hi) };
+  });
+  const original = candidates[0];
+  const best = candidates.slice().sort((a, b) => b.overlap - a.overlap)[0];
+  // 元の重なりが曲の音域の3割未満で、オクターブをずらすと重なりが明確に改善する場合だけ採用
+  if (best.shift !== 0 && best.overlap > original.overlap && original.overlap <= (vocalHigh - vocalLow) * 0.3) {
+    return { singLow: best.lo, singHigh: best.hi, shifted: best.shift };
+  }
+  return { singLow, singHigh, shifted: 0 };
+}
+
 function buildKeyboardSvg(vocalLow, vocalHigh, singLow, singHigh) {
   const values = [vocalLow, vocalHigh, singLow, singHigh].filter(v => v !== null && v !== undefined && !isNaN(v));
   if (!values.length) return '';
@@ -554,13 +574,21 @@ function buildDetailPanelHtml(r, idx) {
     </div>
   ` : '';
 
-  const vocalHigh = num(pick(r.raw, ['vocalRangeHighest']));
-  const vocalLow = num(pick(r.raw, ['vocalRangeLowest']));
-  const singHigh = num(pick(r.raw, ['singingRangeHighest']));
-  const singLow = num(pick(r.raw, ['singingRangeLowest']));
-  const keyboardSvg = buildKeyboardSvg(vocalLow, vocalHigh, singLow, singHigh);
+  const vocalHighRaw = num(pick(r.raw, ['vocalRangeHighest']));
+  const vocalLowRaw = num(pick(r.raw, ['vocalRangeLowest']));
+  const singHighRaw = num(pick(r.raw, ['singingRangeHighest']));
+  const singLowRaw = num(pick(r.raw, ['singingRangeLowest']));
+  // まず設定キー(lastPerformKey)の分だけ曲の音域を補正(+3ならキーを3上げて歌っているので、
+  // その回に実際に求められた音の高さは原曲より3半音高い)
+  const keyStr = pick(r.raw, ['lastPerformKey']);
+  const keyShift = keyStr !== undefined && keyStr !== null && !isNaN(parseInt(keyStr, 10)) ? parseInt(keyStr, 10) : 0;
+  const vocalHighKeyAdj = vocalHighRaw !== null ? vocalHighRaw + keyShift : null;
+  const vocalLowKeyAdj = vocalLowRaw !== null ? vocalLowRaw + keyShift : null;
+  // その上でなお重なりが少なければ、オクターブ違いを疑って自動調整
+  const { singLow, singHigh, shifted } = adjustSingingOctave(vocalLowKeyAdj, vocalHighKeyAdj, singLowRaw, singHighRaw);
+  const keyboardSvg = buildKeyboardSvg(vocalLowKeyAdj, vocalHighKeyAdj, singLow, singHigh);
   const keyboardHtml = keyboardSvg ? `
-    <div class="detail-chart-title">声域(曲の音域 / 自分が出した音域)</div>
+    <div class="detail-chart-title">声域(曲の音域 / 自分が出した音域)${shifted ? `<span style="color:#FF8A3D;font-weight:400;"> ※オクターブ${shifted > 0 ? '上' : '下'}に自動調整</span>` : ''}</div>
     <div style="margin-bottom:4px;">${keyboardSvg}</div>
     <div style="display:flex;gap:14px;justify-content:center;font-size:10.5px;color:var(--text-2);margin-bottom:6px;">
       <span><span style="display:inline-block;width:9px;height:9px;background:rgba(45,233,220,0.5);border:1px solid #2DE9DC;border-radius:2px;margin-right:4px;"></span>曲の音域</span>
@@ -599,9 +627,9 @@ function buildDetailPanelHtml(r, idx) {
     ${techHtml ? `<div class="entry-items" style="margin-bottom:4px;">${techHtml}</div>` : ''}
     ${detailHtml ? `<div class="entry-items" style="margin-bottom:6px;">${detailHtml}</div>` : ''}
     ${radarHtml}
-    ${keyboardHtml}
     ${intervalHtml}
     ${techChartHtml}
+    ${keyboardHtml}
     ${chartHtml}
   `;
 }
