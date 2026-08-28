@@ -460,7 +460,7 @@ function buildKeyboardSvg(vocalLow, vocalHigh, singLow, singHigh) {
     const inA = hasA && n >= vocalLow && n <= vocalHigh;
     const inB = hasB && n >= singLow && n <= singHigh;
     let fill = '#0A0E17';
-    if (inA && inB) fill = '#7A5C86';
+    if (inA && inB) fill = 'rgba(150,110,190,0.4)';
     else if (inA) fill = 'rgba(45,233,220,0.35)';
     else if (inB) fill = 'rgba(255,61,138,0.35)';
     svg += `<rect x="${x}" y="0" width="${wWidth - 1}" height="${wHeight}" fill="${fill}" stroke="#1A2740" stroke-width="1"/>`;
@@ -473,9 +473,9 @@ function buildKeyboardSvg(vocalLow, vocalHigh, singLow, singHigh) {
     const inA = hasA && n >= vocalLow && n <= vocalHigh;
     const inB = hasB && n >= singLow && n <= singHigh;
     let fill = '#05070C';
-    if (inA && inB) fill = '#5A3F63';
-    else if (inA) fill = 'rgba(45,233,220,0.55)';
-    else if (inB) fill = 'rgba(255,61,138,0.55)';
+    if (inA && inB) fill = 'rgba(150,110,190,0.4)';
+    else if (inA) fill = 'rgba(45,233,220,0.35)';
+    else if (inB) fill = 'rgba(255,61,138,0.35)';
     svg += `<rect x="${x}" y="0" width="${bWidth}" height="${bHeight}" fill="${fill}" stroke="#243349" stroke-width="1"/>`;
   });
 
