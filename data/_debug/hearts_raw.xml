@@ -11,6 +11,9 @@
 </data>
 <list count="5">
 <data>
+<scoringHearts scoringHeartsHistoryId="296336" requestNo="5449-28" songName="新宝島" artistName="サカナクション" lastPerformKey="0" totalScore="86524" scoringDateTime="20260831043626" medalKind="4" favorite="0">86524</scoringHearts>
+</data>
+<data>
 <scoringHearts scoringHeartsHistoryId="295674" requestNo="6700-16" songName="ルパン三世のテーマ" artistName="ピートマック・ジュニア" lastPerformKey="+1" totalScore="89497" scoringDateTime="20260830133835" medalKind="4" favorite="0">89497</scoringHearts>
 </data>
 <data>
@@ -21,9 +24,6 @@
 </data>
 <data>
 <scoringHearts scoringHeartsHistoryId="295658" requestNo="1025-98" songName="怪獣" artistName="サカナクション" lastPerformKey="0" totalScore="87724" scoringDateTime="20260830132512" medalKind="4" favorite="0">87724</scoringHearts>
-</data>
-<data>
-<scoringHearts scoringHeartsHistoryId="295650" requestNo="1025-98" songName="怪獣" artistName="サカナクション" lastPerformKey="0" totalScore="86835" scoringDateTime="20260830131949" medalKind="4" favorite="0">86835</scoringHearts>
 </data>
 </list>
 </document>
