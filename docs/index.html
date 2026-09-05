@@ -250,7 +250,14 @@ function num(v) {
 
 function parseDate(v) {
   if (!v) return null;
-  const m = String(v).match(/(\d{4})[\/\-年]?(\d{1,2})[\/\-月]?(\d{1,2})/);
+  const s = String(v);
+  // DAMの生の日時(YYYYMMDDHHMMSS / YYYYMMDDHHMM、12〜14桁)は時刻まで含めてパースする
+  const numMatch = s.match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{0,2})$/);
+  if (numMatch) {
+    const [, y, mo, d, h, mi, se] = numMatch;
+    return new Date(parseInt(y), parseInt(mo) - 1, parseInt(d), parseInt(h), parseInt(mi), se ? parseInt(se) : 0);
+  }
+  const m = s.match(/(\d{4})[\/\-年]?(\d{1,2})[\/\-月]?(\d{1,2})/);
   if (!m) return null;
   return new Date(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3]));
 }
