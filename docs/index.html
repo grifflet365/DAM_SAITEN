@@ -16,7 +16,7 @@
 <style>
   :root{
     --bg-0:#05070C; --bg-1:#0A0E17; --bg-2:#111726; --border-1:#1A2740; --border-2:#243349;
-    --cyan:#2DE9DC; --cyan-dim:#1B9E96; --magenta:#FF3D8A; --magenta-dim:#B32C61; --amber:#FF8A3D;
+    --cyan:#2DE9DC; --cyan-dim:#1B9E96; --magenta:#FF3D8A; --magenta-dim:#B32C61; --amber:#FF8A3D; --violet:#9D8CFF;
     --text-1:#EAF2FA; --text-2:#6C8299;
     --maxw:720px;
   }
@@ -78,6 +78,7 @@
   .entry-artist{font-size:11.5px;color:var(--text-2);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .entry-date{font-size:10.5px;color:var(--text-2);opacity:0.8;margin-top:2px;font-family:'Share Tech Mono',monospace;}
   .entry-key{display:inline-block;margin-left:6px;padding:2px 8px;border:1px solid var(--amber);border-radius:4px;color:var(--amber);opacity:1;font-size:16px;font-weight:700;}
+  .entry-origkey{display:inline-block;margin-left:6px;padding:2px 8px;border:1px solid var(--violet);border-radius:4px;color:var(--violet);opacity:1;font-size:16px;font-weight:700;}
   .entry-items{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:6px;}
   .entry-item{font-size:10.5px;color:var(--text-2);white-space:nowrap;}
   .entry-item b{color:var(--cyan);font-family:'Share Tech Mono',monospace;font-weight:400;}
@@ -886,6 +887,7 @@ function render() {
   } else {
     historyList.innerHTML = pageRecords.map((r, i) => {
       const keyVal = pick(r.raw, ['lastPerformKey']);
+      const origKeyBadge = formatOriginalKeyBadge(r.raw.requestNo);
 
       return `
       <div class="entry" data-idx="${i}">
@@ -896,7 +898,7 @@ function render() {
             <span class="entry-chevron" id="chev-${i}">▾</span>
           </div>
           <div class="entry-artist">${escapeHtml(r.artist)}</div>
-          <div class="entry-date">${r.date ? r.date.toLocaleDateString('ja-JP') : ''}${r.time ? ' ' + r.time : ''}${keyVal ? ` <span class="entry-key">キー ${escapeHtml(keyVal)}</span>` : ''}</div>
+          <div class="entry-date">${r.date ? r.date.toLocaleDateString('ja-JP') : ''}${r.time ? ' ' + r.time : ''}${keyVal ? ` <span class="entry-key">キー ${escapeHtml(keyVal)}</span>` : ''}${origKeyBadge}</div>
           <div class="entry-detail" id="detail-${i}"></div>
         </div>
       </div>
@@ -919,6 +921,14 @@ function escapeHtml(str) {
   const d = document.createElement('div');
   d.textContent = str;
   return d.innerHTML;
+}
+
+// requestNoから原曲キー(DAMの機種標準キーと原曲との半音差)のバッジHTMLを組み立てる
+function formatOriginalKeyBadge(requestNo) {
+  const shift = (DATA.originalKeys || {})[requestNo];
+  if (shift === undefined || shift === null) return '';
+  const label = shift > 0 ? `+${shift}` : `${shift}`;
+  return ` <span class="entry-origkey">原曲 ${label}</span>`;
 }
 
 document.getElementById('periodBar').addEventListener('click', (e) => {
