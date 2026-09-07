@@ -62,6 +62,10 @@ MODE_DETAIL_CONFIG = {
 
 MAX_DETAIL_FETCH_PER_RUN = 500  # 1回の実行での詳細取得の上限(安全弁)
 
+# 原曲キー(公式・ログイン不要のAPI)
+ORIGINAL_KEY_URL = f"{BASE}/app/leaf/xml/damtomo/songLeaf.do"
+MAX_ORIGINAL_KEY_FETCH_PER_RUN = 300  # 1回の実行での原曲キー取得の上限(安全弁)
+
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36")
 
@@ -381,6 +385,96 @@ def enrich_with_details(session, mode, merged_records, cdm_card_no, cdm_token):
     return success
 
 
+def fetch_original_key_shift(session, request_no):
+    """公式の楽曲詳細XML(songLeaf.do)から、その曲の「原曲キー」を取得する
+
+    ログイン不要の公開API。requestNoごとに配信機種の一覧を返し、各<model>の
+    shift属性が「その機種の標準キーと原曲キーとの半音差」(例: "+1"/"0"/"-2")。
+    一覧は新しい機種が先頭に並ぶ(2026/09 確認済み)ため、先頭要素のshiftを
+    現行の原曲キーとして採用する。該当曲が見つからない場合はNoneを返す。
+    """
+    r = session.get(
+        ORIGINAL_KEY_URL,
+        params={"requestNo": request_no, "enc": "utf-8"},
+        headers={"User-Agent": UA, "Referer": MYPAGE_URL},
+        timeout=30,
+    )
+    r.raise_for_status()
+    if not r.text.strip().startswith("<"):
+        raise RuntimeError(f"XMLではないレスポンスが返りました: {r.text[:200]}")
+
+    root = ET.fromstring(r.text)
+    status_elem = root.find(".//{*}status")
+    if status_elem is None or not status_elem.text or status_elem.text.strip() != "0000":
+        return None
+
+    model_elem = root.find(".//{*}list/{*}data/{*}model")
+    if model_elem is None:
+        return None
+    shift_text = model_elem.attrib.get("shift")
+    if shift_text is None:
+        return None
+    try:
+        return int(shift_text)
+    except ValueError:
+        return None
+
+
+def load_original_keys(path):
+    if os.path.exists(path):
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {}
+
+
+def update_original_keys(session, combined_for_dashboard, path):
+    """履歴に登場する全requestNoの原曲キーを、キャッシュJSONに追記して返す"""
+    original_keys = load_original_keys(path)
+
+    request_nos = set()
+    for records in combined_for_dashboard.values():
+        for rec in records:
+            rn = rec.get("requestNo")
+            if rn:
+                request_nos.add(rn)
+
+    targets = sorted(rn for rn in request_nos if rn not in original_keys)
+    if not targets:
+        log("原曲キー: 新規取得が必要な曲はありません")
+        return original_keys
+
+    if len(targets) > MAX_ORIGINAL_KEY_FETCH_PER_RUN:
+        log(
+            f"原曲キー: 取得対象が{len(targets)}件あり、"
+            f"上限({MAX_ORIGINAL_KEY_FETCH_PER_RUN}件)を超えるため今回は一部のみ処理し、"
+            f"残りは次回の実行で続きから処理します。"
+        )
+    targets = targets[:MAX_ORIGINAL_KEY_FETCH_PER_RUN]
+
+    log(f"原曲キー: {len(targets)}曲分を取得します...")
+    success = 0
+    fail = 0
+    for rn in targets:
+        try:
+            shift = fetch_original_key_shift(session, rn)
+            original_keys[rn] = {
+                "shift": shift,
+                "fetchedAt": datetime.now(JST).isoformat(),
+            }
+            if shift is not None:
+                success += 1
+            else:
+                fail += 1
+        except Exception as e:
+            log(f"  警告: 原曲キー取得失敗 (requestNo={rn}): {e}")
+            fail += 1
+        time.sleep(0.3)
+
+    save_json(path, original_keys)
+    log(f"原曲キー: 取得 成功{success}件 / 取得不可{fail}件")
+    return original_keys
+
+
 def make_record_id(mode, rec):
     """レコードの一意IDを作る(APIが独自IDを返さない場合のフォールバック含む)"""
     for key in ("scoringAiId", "scoringId", "id", "no", "serial"):
@@ -525,12 +619,20 @@ def main():
         summary[mode] = {"total": len(merged), "added": added, "detailFetched": enriched_count}
         combined_for_dashboard[mode] = merged
 
+    # 原曲キー(公式APIから取得、requestNoごとにキャッシュ)
+    original_keys_path = os.path.join(DATA_DIR, "original_keys.json")
+    original_keys = update_original_keys(session, combined_for_dashboard, original_keys_path)
+    original_keys_for_dashboard = {
+        rn: info["shift"] for rn, info in original_keys.items() if info.get("shift") is not None
+    }
+
     # ダッシュボード用にまとめて出力
     save_json(
         os.path.join(DOCS_DIR, "data.json"),
         {
             "updatedAt": datetime.now(JST).isoformat(),
             "modes": combined_for_dashboard,
+            "originalKeys": original_keys_for_dashboard,
         },
     )
 
