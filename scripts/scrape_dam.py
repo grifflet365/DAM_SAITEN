@@ -64,7 +64,7 @@ MAX_DETAIL_FETCH_PER_RUN = 500  # 1回の実行での詳細取得の上限(安�
 
 # DAMのAPIレスポンスにそのまま含まれる、会員を特定できる生の識別情報。
 # ツールのロジックでは一切使っておらず、リポジトリがPublicなので保存前に必ず除外する。
-SENSITIVE_FIELDS = {"clubDamCardNo", "cdmCardNo"}
+SENSITIVE_FIELDS = {"clubDamCardNo", "cdmCardNo", "edyId"}
 
 # 原曲キー(公式・ログイン不要のAPI)
 ORIGINAL_KEY_URL = f"{BASE}/app/leaf/xml/damtomo/songLeaf.do"
