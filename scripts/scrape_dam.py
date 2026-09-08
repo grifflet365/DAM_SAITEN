@@ -62,6 +62,10 @@ MODE_DETAIL_CONFIG = {
 
 MAX_DETAIL_FETCH_PER_RUN = 500  # 1回の実行での詳細取得の上限(安全弁)
 
+# DAMのAPIレスポンスにそのまま含まれる、会員を特定できる生の識別情報。
+# ツールのロジックでは一切使っておらず、リポジトリがPublicなので保存前に必ず除外する。
+SENSITIVE_FIELDS = {"clubDamCardNo", "cdmCardNo"}
+
 # 原曲キー(公式・ログイン不要のAPI)
 ORIGINAL_KEY_URL = f"{BASE}/app/leaf/xml/damtomo/songLeaf.do"
 MAX_ORIGINAL_KEY_FETCH_PER_RUN = 300  # 1回の実行での原曲キー取得の上限(安全弁)
@@ -221,7 +225,7 @@ def parse_scoring_xml(xml_text):
             if not children:
                 continue
             body = children[0]
-            rec = dict(body.attrib)
+            rec = {k: v for k, v in body.attrib.items() if k not in SENSITIVE_FIELDS}
             rec["_tag"] = strip_ns(body.tag)
             raw_text = (body.text or "").strip()
             rec["_scoreRawText"] = raw_text
@@ -489,8 +493,18 @@ def make_record_id(mode, rec):
 def load_existing(path):
     if os.path.exists(path):
         with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
+            records = json.load(f)
+        strip_sensitive_fields(records)
+        return records
     return []
+
+
+def strip_sensitive_fields(records):
+    """過去に保存された記録からも、会員を特定できる生の識別情報を取り除く(既存データの自動クリーンアップ)"""
+    for rec in records:
+        for field in SENSITIVE_FIELDS:
+            rec.pop(field, None)
+    return records
 
 
 def save_json(path, data):
