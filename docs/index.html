@@ -602,7 +602,7 @@ function buildDetailPanelHtml(r, idx) {
   const intervalArr = getSectionArray(r.raw, 'intervalGraphPointsSection');
   const intervalHtml = intervalArr ? `
     <div class="detail-chart-title">音程の区間別グラフ(24分割)</div>
-    <div class="detail-chart-wrap" style="height:65px;"><canvas id="intervalChart-${idx}" role="img" aria-label="音程の区間別グラフ"></canvas></div>
+    <div class="detail-chart-wrap" style="height:98px;"><canvas id="intervalChart-${idx}" role="img" aria-label="音程の区間別グラフ"></canvas></div>
   ` : '';
 
   const secConfig = SECTION_CHART_CONFIG[curMode];
@@ -614,7 +614,7 @@ function buildDetailPanelHtml(r, idx) {
     if (hasData) {
       techChartHtml = `
         <div class="detail-chart-title">${secConfig.title}</div>
-        <div class="detail-chart-wrap" style="height:65px;"><canvas id="techChart-${idx}" role="img" aria-label="${secConfig.title}"></canvas></div>
+        <div class="detail-chart-wrap" style="height:98px;"><canvas id="techChart-${idx}" role="img" aria-label="${secConfig.title}"></canvas></div>
       `;
     }
   }
@@ -749,7 +749,7 @@ function renderDetailCharts(idx, r) {
         plugins: { legend: { display: false } },
         scales: {
           x: { ticks: { color: '#6C8299', font: { size: 8 }, maxTicksLimit: 6 }, grid: { display: false } },
-          y: { min: 60, max: 100, ticks: { color: '#6C8299', font: { size: 8 } }, grid: { color: '#1A2740' } },
+          y: { min: 40, max: 100, ticks: { color: '#6C8299', font: { size: 8 } }, grid: { color: '#1A2740' } },
         },
       },
     }));
