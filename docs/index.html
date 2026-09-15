@@ -736,8 +736,9 @@ function renderDetailCharts(idx, r) {
           borderColor: '#2DE9DC',
           backgroundColor: 'rgba(45,233,220,0.08)',
           fill: true,
-          tension: 0.3,
-          pointRadius: 0,
+          tension: 0,
+          pointRadius: 2,
+          pointBackgroundColor: '#2DE9DC',
           borderWidth: 1.5,
           spanGaps: true,
         }],
@@ -748,7 +749,7 @@ function renderDetailCharts(idx, r) {
         plugins: { legend: { display: false } },
         scales: {
           x: { ticks: { color: '#6C8299', font: { size: 8 }, maxTicksLimit: 6 }, grid: { display: false } },
-          y: { min: 0, max: 100, ticks: { color: '#6C8299', font: { size: 8 } }, grid: { color: '#1A2740' } },
+          y: { min: 60, max: 100, ticks: { color: '#6C8299', font: { size: 8 } }, grid: { color: '#1A2740' } },
         },
       },
     }));
