@@ -19,3 +19,10 @@
 [2026-09-28 20:33:42] [2026-09-28 20:33:42] hearts: 詳細取得が必要な曲はありません
 [2026-09-28 20:33:42] [2026-09-28 20:33:42] 原曲キー: 新規取得が必要な曲はありません
 [2026-09-28 20:33:42] [2026-09-28 20:33:42] 完了: {"ai": {"total": 876, "added": 0, "detailFetched": 0}, "dxg": {"total": 206, "added": 0, "detailFetched": 0}, "hearts": {"total": 408, "added": 0, "detailFetched": 0}}
+[2026-09-28 20:33:43] [main da9fcee] 謗｡轤ｹ繝・・繧ｿ譖ｴ譁ｰ 2026-09-28 20:33 JST (繝ｭ繝ｼ繧ｫ繝ｫ螳溯｡・
+[2026-09-28 20:33:43]  4 files changed, 28 insertions(+), 1 deletion(-)
+[2026-09-28 20:33:43]  create mode 100644 data/_debug/run_and_push_20260928_203222.log
+[2026-09-28 20:33:43]  create mode 100644 data/_debug/run_and_push_20260928_203258.log
+[2026-09-28 20:33:47] To https://github.com/grifflet365/DAM_SAITEN.git
+[2026-09-28 20:33:47]    66754d9..da9fcee  main -> main
+[2026-09-28 20:33:47] コミット&プッシュ完了: 採点データ更新 2026-09-28 20:33 JST (ローカル実行)
