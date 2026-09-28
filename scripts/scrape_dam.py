@@ -73,6 +73,25 @@ MAX_ORIGINAL_KEY_FETCH_PER_RUN = 300  # 1回の実行での原曲キー取得の
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36")
 
+# 実ブラウザ(Chrome)が通常のページ遷移で送るヘッダー一式。
+# GitHub Actions実行環境からのアクセスが機械的なリクエストとして弾かれる(503)事象が
+# 2026/09/28に発生したため、素のUser-Agentのみのリクエストから変更。
+COMMON_HEADERS = {
+    "User-Agent": UA,
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+    "Accept-Language": "ja,en-US;q=0.9,en;q=0.8",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Connection": "keep-alive",
+    "Upgrade-Insecure-Requests": "1",
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "none",
+    "Sec-Fetch-User": "?1",
+    "sec-ch-ua": '"Chromium";v="151", "Not(A:Brand";v="8", "Google Chrome";v="151"',
+    "sec-ch-ua-mobile": "?0",
+    "sec-ch-ua-platform": '"Windows"',
+}
+
 JST = timezone(timedelta(hours=9))
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -536,6 +555,7 @@ def main():
         sys.exit(1)
 
     session = requests.Session()
+    session.headers.update(COMMON_HEADERS)
 
     try:
         mypage_html = login(session, login_id, password)
