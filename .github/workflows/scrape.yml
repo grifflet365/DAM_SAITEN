@@ -29,6 +29,24 @@ jobs:
       - name: 依存パッケージをインストール
         run: pip install requests
 
+      - name: (一時) ネットワーク疎通の切り分けテスト
+        continue-on-error: true
+        run: |
+          UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36"
+          echo "== 1. ログインページ (Login.do) =="
+          curl -s -o /dev/null -w "status=%{http_code} time=%{time_total}s\n" -A "$UA" "https://www.clubdam.com/app/damtomo/auth/member/Login.do"
+          echo "-- レスポンスヘッダー --"
+          curl -s -D - -o /dev/null -A "$UA" "https://www.clubdam.com/app/damtomo/auth/member/Login.do" || true
+          echo ""
+          echo "== 2. 認証不要の公式ページ (曲検索) =="
+          curl -s -o /dev/null -w "status=%{http_code} time=%{time_total}s\n" -A "$UA" "https://www.clubdam.com/karaokesearch/songleaf.html?requestNo=4461-09"
+          echo ""
+          echo "== 3. clubdam.com トップページ =="
+          curl -s -o /dev/null -w "status=%{http_code} time=%{time_total}s\n" -A "$UA" "https://www.clubdam.com/"
+          echo ""
+          echo "== 4. 無関係な外部サイト (参考) =="
+          curl -s -o /dev/null -w "status=%{http_code} time=%{time_total}s\n" "https://www.google.com/"
+
       - name: スクレイピング実行
         env:
           DAM_LOGIN_ID: ${{ secrets.DAM_LOGIN_ID }}
