@@ -70,6 +70,21 @@
   .detail b.c{color:var(--cyan);}
   .empty{padding:2.5rem 1rem;text-align:center;color:var(--text-2);font-size:13px;}
   .foot{padding:18px 16px 0;font-size:11px;color:var(--text-2);line-height:1.7;}
+  [hidden]{display:none!important;}
+  .tabs{display:flex;gap:8px;margin-bottom:10px;}
+  .tab{flex:1;padding:9px 6px;border-radius:10px;border:1px solid var(--border-2);background:none;color:var(--text-2);font-family:inherit;font-size:14px;cursor:pointer;}
+  .tab i{font-style:normal;font-family:'Share Tech Mono',monospace;margin-left:6px;color:var(--amber);}
+  .tab.on{background:var(--bg-2);color:var(--text-1);border-color:var(--cyan);font-weight:700;}
+  .tab:focus-visible,.cat:focus-visible{outline:2px solid var(--cyan);outline-offset:2px;}
+  .sec{display:flex;justify-content:space-between;align-items:baseline;margin:10px 2px 0;font-size:13px;font-weight:700;color:var(--cyan);}
+  .sec span:last-child{font-family:'Share Tech Mono',monospace;font-size:12px;font-weight:400;color:var(--text-2);}
+  .cats{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
+  .cat{border:1px solid var(--border-2);background:none;color:var(--text-2);border-radius:999px;padding:5px 11px;font-size:12.5px;font-family:inherit;cursor:pointer;}
+  .cat.on{background:var(--violet);border-color:var(--violet);color:#120F33;font-weight:700;}
+  .acts{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:6px;}
+  .nx{border:1px solid var(--border-2);background:none;color:var(--text-2);border-radius:999px;padding:4px 9px;font-size:11.5px;font-family:inherit;white-space:nowrap;cursor:pointer;}
+  .nx.on{background:var(--violet);border-color:var(--violet);color:#120F33;font-weight:700;}
+  .nx:focus-visible{outline:2px solid var(--cyan);outline-offset:2px;}
 </style>
 
 </head>
@@ -82,6 +97,8 @@
   </div>
 
   <div class="controls">
+    <div class="tabs"><button class="tab on" data-t="rep">レパートリー</button><button class="tab" data-t="next">次回歌う<i id="nc">0</i></button><button class="tab" data-t="fav">★お気に入り<i id="fc">0</i></button></div>
+    <div id="filters">
     <input id="q" class="search" type="search" placeholder="曲名・歌手で検索" autocomplete="off" enterkeyhint="search">
     <div class="row2"><div class="chips" id="chips"></div></div>
     <div class="row2"><div class="chips" id="gchips"></div></div>
@@ -96,10 +113,11 @@
         <option value="lastOld">歌ってから日が経った順</option>
       </select>
     </div>
+    </div>
   </div>
 
   <div class="list" id="list"></div>
-  <div class="foot">キーはDAMのリモコンに入れる値(機種の標準キーからの差)で、直近5回で一番多かったものを表示しています。「原曲」はDAMの原曲キーとの差で、キーを決める時の参考にしてください。ジャンルは歌手名などから自動で付けたもので、間違いがあることがあります。★はこのスマホの中にだけ保存されます。</div>
+  <div class="foot">キーはDAMのリモコンに入れる値(機種の標準キーからの差)で、直近5回で一番多かったものを表示しています。「原曲」はDAMの原曲キーとの差で、キーを決める時の参考にしてください。ジャンルは歌手名などから自動で付けたもので、間違いがあることがあります。お気に入り・次回歌う・分類は、このスマホの中にだけ保存されます。</div>
 </div>
 
 <script>
@@ -111,14 +129,19 @@ const fk = (k) => k == null ? '-' : (k > 0 ? '+' + k : String(k));
 const ago = (n) => n === 0 ? '今日' : n === 1 ? '昨日' : n < 31 ? n + '日前' : n < 365 ? Math.floor(n / 30) + 'か月前' : Math.floor(n / 365) + '年前';
 const modeName = { ai: 'Ai', dxg: 'DX-G', hearts: 'Ai Heart' };
 const id = (r) => r.t + '|' + r.a;
+const CATS = ['未分け', '鉄板', '久しぶり', '練習中', 'お試し', 'その他'];
 
-let favs = new Set();
-try { favs = new Set(JSON.parse(localStorage.getItem('rep_fav_v1') || '[]')); } catch (e) {}
-const saveFavs = () => { try { localStorage.setItem('rep_fav_v1', JSON.stringify([...favs])); } catch (e) {} };
+let next = {};
+try { next = JSON.parse(localStorage.getItem('rep_next_v1') || '{}') || {}; } catch (e) { next = {}; }
+const saveNext = () => { try { localStorage.setItem('rep_next_v1', JSON.stringify(next)); } catch (e) {} };
+let fav = new Set();
+try { fav = new Set(JSON.parse(localStorage.getItem('rep_fav_v1') || '[]')); } catch (e) { fav = new Set(); }
+const saveFav = () => { try { localStorage.setItem('rep_fav_v1', JSON.stringify([...fav])); } catch (e) {} };
 
 const CHIPS = [
   ['all', 'すべて', () => true],
-  ['fav', '★', (r) => favs.has(id(r))],
+  ['fav', '★ お気に入り', (r) => fav.has(id(r))],
+  ['nxt', '次回', (r) => id(r) in next],
   ['core', '十八番 10回〜', (r) => r.n >= 10],
   ['high', '高得点 91〜', (r) => r.best >= 91],
   ['rest', '久しぶり 2週間〜', (r) => r.n >= 2 && days(r.last) >= 14],
@@ -132,57 +155,96 @@ const SORTS = {
   lastNew: (a, b) => b.last.localeCompare(a.last),
   lastOld: (a, b) => a.last.localeCompare(b.last)
 };
+const GENRES = ['アニメ', '特撮', 'ゲーム・ボカロ', 'J-POP', 'ロック', '90年代', '昭和歌謡', '演歌', 'ダンス', 'アイドル', '未分類'];
 
-const GENRES = ['アニメ','特撮','ゲーム・ボカロ','J-POP','ロック','90年代','昭和歌謡','演歌','ダンス','アイドル','未分類'];
-let chip = 'all', genre = null, open = null;
+let tab = 'rep', chip = 'all', genre = null, open = null;
 const $ = (s) => document.querySelector(s);
+function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 
 function renderChips() {
   $('#chips').innerHTML = CHIPS.map(([k, label, f]) =>
     `<button class="chip ${k === chip ? 'on' : ''}" data-k="${k}">${label}<i>${DATA.filter(f).length}</i></button>`).join('');
 }
-
 function renderG() {
   $('#gchips').innerHTML = GENRES.map((g) =>
     `<button class="chip g ${g === genre ? 'on' : ''}" data-g="${g}">${g}<i>${DATA.filter((r) => r.g.includes(g)).length}</i></button>`).join('');
 }
 
+function cardHtml(r, withCats) {
+  const i = id(r), d = days(r.last), isOpen = open === i, on = i in next, isFav = fav.has(i), enc = encodeURIComponent(i);
+  return `<div class="card ${isOpen ? 'open' : ''}" data-i="${enc}" tabindex="0" role="button" aria-expanded="${isOpen}">
+    <div class="best"><b>${r.best.toFixed(1)}</b><span>最高</span></div>
+    <div class="body">
+      <div class="title">${esc(r.t)}</div>
+      <div class="artist">${esc(r.a)}</div>
+      <div class="tags">${r.g.join(' ・ ')}</div>
+      <div class="meta">
+        <span class="key"><small>キー</small>${fk(r.key)}</span>
+        <span class="sub"><em>${r.n}</em>回</span>
+        <span class="sub">${ago(d)}</span>
+      </div>
+      ${withCats ? `<div class="cats">${CATS.map((c) => `<button class="cat ${next[i] === c ? 'on' : ''}" data-i="${enc}" data-c="${c}">${c}</button>`).join('')}</div>` : ''}
+      <div class="detail">
+        <div>平均点<b>${r.avg.toFixed(2)}</b></div>
+        <div>直近5回の平均<b>${r.r5.toFixed(2)}</b></div>
+        <div>直近5回でこのキー<b>${r.keyN} / ${Math.min(5, r.n)}回</b></div>
+        <div>全期間でよく使うキー<b>${fk(r.keyAll)}</b></div>
+        <div>最高点を出したキー<b class="c">${fk(r.bestKey)}</b></div>
+        <div>DAMの原曲キー(差)<b class="v">${r.orig == null ? '-' : fk(r.orig)}</b></div>
+        <div>初めて歌った日<b>${r.first.replace(/-/g, '/')}</b></div>
+        <div>最後に歌った日<b>${r.last.replace(/-/g, '/')}</b></div>
+        <div class="wide">歌ったモード<b>${r.modes.map((m) => modeName[m]).join(' / ')}</b></div>
+      </div>
+    </div>
+    <div class="acts">
+      <button class="star ${isFav ? 'on' : ''}" data-s="${enc}" aria-label="お気に入り">${isFav ? '★' : '☆'}</button>
+      <button class="nx ${on ? 'on' : ''}" data-n="${enc}" aria-label="次回歌う">${on ? '次回✓' : '＋次回'}</button>
+    </div>
+  </div>`;
+}
+
+function updateTabs() {
+  $('#nc').textContent = Object.keys(next).length;
+  $('#fc').textContent = fav.size;
+  document.querySelectorAll('.tab').forEach((b) => b.classList.toggle('on', b.dataset.t === tab));
+  $('#filters').hidden = tab !== 'rep';
+}
+
+function renderNext() {
+  const byId = new Map(DATA.map((r) => [id(r), r]));
+  const items = Object.keys(next).map((i) => byId.get(i)).filter(Boolean);
+  if (!items.length) {
+    $('#list').innerHTML = '<div class="empty">レパートリーで「＋次回」をタップすると、ここに入ります。<br>入れたあと、ここで「鉄板」「久しぶり」などに分類できます。</div>';
+    return;
+  }
+  $('#list').innerHTML = CATS.map((c) => {
+    const rs = items.filter((r) => next[id(r)] === c).sort(SORTS.n);
+    return rs.length ? `<div class="sec"><span>${c}</span><span>${rs.length}曲</span></div>` + rs.map((r) => cardHtml(r, true)).join('') : '';
+  }).join('');
+}
+
+function renderFav() {
+  const rs = DATA.filter((r) => fav.has(id(r))).sort(SORTS.n);
+  $('#list').innerHTML = rs.length
+    ? `<div class="sec"><span>お気に入り</span><span>${rs.length}曲</span></div>` + rs.map((r) => cardHtml(r, false)).join('')
+    : '<div class="empty">曲の☆をタップすると、ここに入ります。<br>(次回歌う曲とは別に、ずっと残るお気に入りです)</div>';
+}
+
 function render() {
+  updateTabs();
+  if (tab === 'next') { renderNext(); return; }
+  if (tab === 'fav') { renderFav(); return; }
   const q = $('#q').value.trim().toLowerCase();
   const f = CHIPS.find((c) => c[0] === chip)[2];
   const rows = DATA.filter(f).filter((r) => !genre || r.g.includes(genre)).filter((r) => !q || (r.t + ' ' + r.a).toLowerCase().includes(q)).sort(SORTS[$('#sort').value]);
   $('#count').textContent = `${DATA.length}曲中 ${rows.length}曲`;
-  $('#list').innerHTML = rows.length ? rows.map((r) => {
-    const i = id(r), d = days(r.last), isOpen = open === i;
-    return `<div class="card ${isOpen ? 'open' : ''}" data-i="${encodeURIComponent(i)}" tabindex="0" role="button" aria-expanded="${isOpen}">
-      <div class="best"><b>${r.best.toFixed(1)}</b><span>最高</span></div>
-      <div class="body">
-        <div class="title">${esc(r.t)}</div>
-        <div class="artist">${esc(r.a)}</div>
-        <div class="tags">${r.g.join(' ・ ')}</div>
-        <div class="meta">
-          <span class="key"><small>キー</small>${fk(r.key)}</span>
-          <span class="sub"><em>${r.n}</em>回</span>
-          <span class="sub">${ago(d)}</span>
-        </div>
-        <div class="detail">
-          <div>平均点<b>${r.avg.toFixed(2)}</b></div>
-          <div>直近5回の平均<b>${r.r5.toFixed(2)}</b></div>
-          <div>直近5回でこのキー<b>${r.keyN} / ${Math.min(5, r.n)}回</b></div>
-          <div>全期間でよく使うキー<b>${fk(r.keyAll)}</b></div>
-          <div>最高点を出したキー<b class="c">${fk(r.bestKey)}</b></div>
-          <div>DAMの原曲キー(差)<b class="v">${r.orig == null ? '-' : fk(r.orig)}</b></div>
-          <div class="wide">歌ったモード<b>${r.modes.map((m) => modeName[m]).join(' / ')}</b></div>
-          <div>初めて歌った日<b>${r.first.replace(/-/g, '/')}</b></div>
-          <div>最後に歌った日<b>${r.last.replace(/-/g, '/')}</b></div>
-        </div>
-      </div>
-      <button class="star ${favs.has(i) ? 'on' : ''}" data-s="${encodeURIComponent(i)}" aria-label="お気に入り">${favs.has(i) ? '★' : '☆'}</button>
-    </div>`;
-  }).join('') : '<div class="empty">該当する曲がありません</div>';
+  $('#list').innerHTML = rows.length ? rows.map((r) => cardHtml(r, false)).join('') : '<div class="empty">該当する曲がありません</div>';
 }
-function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 
+document.querySelector('.tabs').addEventListener('click', (e) => {
+  const b = e.target.closest('.tab'); if (!b) return;
+  tab = b.dataset.t; open = null; window.scrollTo(0, 0); render();
+});
 $('#chips').addEventListener('click', (e) => {
   const b = e.target.closest('.chip'); if (!b) return;
   chip = b.dataset.k; renderChips(); render();
@@ -194,12 +256,19 @@ $('#gchips').addEventListener('click', (e) => {
 $('#q').addEventListener('input', render);
 $('#sort').addEventListener('change', render);
 $('#list').addEventListener('click', (e) => {
+  const cb = e.target.closest('.cat');
+  if (cb) { next[decodeURIComponent(cb.dataset.i)] = cb.dataset.c; saveNext(); render(); return; }
+  const n = e.target.closest('.nx');
+  if (n) {
+    const i = decodeURIComponent(n.dataset.n);
+    if (i in next) delete next[i]; else next[i] = '未分け';
+    saveNext(); renderChips(); render(); return;
+  }
   const s = e.target.closest('.star');
   if (s) {
-    e.stopPropagation();
     const i = decodeURIComponent(s.dataset.s);
-    favs.has(i) ? favs.delete(i) : favs.add(i);
-    saveFavs(); renderChips(); render(); return;
+    if (fav.has(i)) fav.delete(i); else fav.add(i);
+    saveFav(); renderChips(); render(); return;
   }
   const c = e.target.closest('.card'); if (!c) return;
   const i = decodeURIComponent(c.dataset.i);
