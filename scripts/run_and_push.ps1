@@ -43,7 +43,13 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-git add data/ docs/data.json
+Log "レパートリー更新中..."
+python scripts\build_repertoire.py 2>&1 | ForEach-Object { Log $_ }
+if ($LASTEXITCODE -ne 0) {
+    Log "build_repertoire.py が失敗しました(exit=$LASTEXITCODE)。データ更新は続行します。"
+}
+
+git add data/ docs/data.json docs/repertoire.json
 git diff --cached --quiet
 $hasChanges = ($LASTEXITCODE -ne 0)
 if (-not $hasChanges) {
