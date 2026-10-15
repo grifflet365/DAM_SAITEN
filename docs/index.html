@@ -341,50 +341,31 @@ function computeVocalRange() {
   };
 }
 
-// 枠内(x:248〜330, y:52〜118)に描く控えめな鍵盤
+// 左側のカードに描く音域(補正後)。鍵盤は詳細画面と同じ buildKeyboardSvg を使う
+// 水色=全体の範囲 / ピンク=ふだんの範囲(上位5%・下位5%)
 function buildRangeKeyboardSvg(range, nowMs) {
   if (!range) return '';
-  const isBlack = n => [1, 3, 6, 8, 10].includes(((n % 12) + 12) % 12);
   const names = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
   const nameOf = n => names[((n % 12) + 12) % 12] + (Math.floor(n / 12) - 1);
-  let lowN = range.lo, highN = range.hi;
-  while (isBlack(lowN)) lowN--;
-  while (isBlack(highN)) highN++;
-  const white = [];
-  for (let n = lowN; n <= highN; n++) if (!isBlack(n)) white.push(n);
-  const x0 = 252, w = 74, ky = 70, kh = 34;
-  const ww = w / white.length;
-  const idx = {};
-  white.forEach((n, i) => { idx[n] = i; });
-  const baseOf = n => { while (isBlack(n)) n--; return n; };
-  const xf = n => x0 + idx[baseOf(n)] * ww;
-  const inUsual = n => n >= range.usualLo && n <= range.usualHi;
-  const inAll = n => n >= range.lo && n <= range.hi;
-  let s = '';
-  white.forEach(n => {
-    const fill = inUsual(n) ? '#FF3D8A' : (inAll(n) ? '#C7D2DC' : '#243349');
-    s += `<rect x="${xf(n).toFixed(2)}" y="${ky}" width="${(ww - 0.35).toFixed(2)}" height="${kh}" fill="${fill}" stroke="#0A0E17" stroke-width="0.3"/>`;
-  });
-  for (let n = lowN; n <= highN; n++) {
-    if (!isBlack(n)) continue;
-    const fill = inUsual(n) ? '#C2185B' : '#1B2330';
-    s += `<rect x="${(xf(n) + ww - ww * 0.3).toFixed(2)}" y="${ky}" width="${(ww * 0.6).toFixed(2)}" height="${(kh * 0.6).toFixed(1)}" fill="${fill}"/>`;
-  }
   const isNew = d => d && (nowMs - d.getTime()) <= RANGE_NEW_DAYS * 86400000;
-  const recent = [[range.hiDate, '高'], [range.loDate, '低']].filter(x => isNew(x[0]))
-    .sort((a, b) => b[0] - a[0])[0];
+  const recent = [range.hiDate, range.loDate].filter(isNew).sort((a, b) => b - a)[0];
   const p2 = n => String(n).padStart(2, '0');
   const newTag = recent
-    ? `<text x="328" y="54" text-anchor="end" font-family="Share Tech Mono, monospace" font-size="7" font-weight="700" fill="#FF8A3D">NEW ${recent[0].getMonth() + 1}/${p2(recent[0].getDate())}</text>`
+    ? `<text x="196" y="52" text-anchor="end" font-family="Share Tech Mono, monospace" font-size="8" font-weight="700" fill="#FF8A3D">NEW ${recent.getMonth() + 1}/${p2(recent.getDate())}</text>`
     : '';
+  const kb = buildKeyboardSvg(range.lo, range.hi, range.usualLo, range.usualHi)
+    .replace(/<svg width="100%" height="\d+" viewBox/, '<svg x="16" y="60" width="178" height="62" viewBox');
+  const font = 'font-family="Share Tech Mono, monospace"';
   return `
-<rect x="246" y="42" width="88" height="82" rx="4" fill="#0A0E17" stroke="#1A2740" stroke-width="1"/>
-<text x="252" y="54" font-family="Share Tech Mono, monospace" font-size="7" fill="#9FB3C8">音域補正</text>
+<rect x="10" y="38" width="190" height="124" rx="4" fill="#0A0E17" stroke="#1A2740" stroke-width="1"/>
+<text x="16" y="52" ${font} font-size="8" fill="#9FB3C8">音域(補正後)</text>
 ${newTag}
-<text x="252" y="66" font-family="Share Tech Mono, monospace" font-size="8" fill="#EAF2FA">${nameOf(range.lo)}</text>
-<text x="328" y="66" text-anchor="end" font-family="Share Tech Mono, monospace" font-size="8" fill="#EAF2FA">${nameOf(range.hi)}</text>
-${s}
-<text x="290" y="118" text-anchor="middle" font-family="Share Tech Mono, monospace" font-size="6" fill="#6C8299">${nameOf(range.usualLo)}〜${nameOf(range.usualHi)}</text>`;
+${kb}
+<text x="16" y="136" ${font} font-size="8" fill="#6C8299">最低</text>
+<text x="40" y="136" ${font} font-size="10" fill="#EAF2FA">${nameOf(range.lo)}</text>
+<text x="196" y="136" text-anchor="end" ${font} font-size="10" fill="#EAF2FA">${nameOf(range.hi)}</text>
+<text x="170" y="136" text-anchor="end" ${font} font-size="8" fill="#6C8299">最高</text>
+<text x="16" y="154" ${font} font-size="8" fill="#FF3D8A">ふだん ${nameOf(range.usualLo)}〜${nameOf(range.usualHi)}</text>`;
 }
 
 function buildHeaderSvg(modeRecords, updatedAtIso) {
@@ -409,7 +390,7 @@ function buildHeaderSvg(modeRecords, updatedAtIso) {
   const logLine = `LOG: [${fmtLogTimestamp(updatedAtIso)}] \u2192 [\u81ea\u52d5\u9023\u643a\u30d7\u30ed\u30bb\u30b9\u5b8c\u4e86\u30fb${count}\u66f2]`;
 
   return `
-<svg width="100%" height="210" viewBox="0 0 340 210" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+<svg width="100%" viewBox="0 0 340 210" style="display:block" xmlns="http://www.w3.org/2000/svg">
 <defs>
 <radialGradient id="neb1" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#1B9E96" stop-opacity="0.5"/><stop offset="100%" stop-color="#1B9E96" stop-opacity="0"/></radialGradient>
 <radialGradient id="neb2" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#B32C61" stop-opacity="0.4"/><stop offset="100%" stop-color="#B32C61" stop-opacity="0"/></radialGradient>
@@ -418,26 +399,16 @@ function buildHeaderSvg(modeRecords, updatedAtIso) {
 <rect width="340" height="210" fill="#05070C"/>
 <ellipse cx="60" cy="50" rx="110" ry="80" fill="url(#neb1)" filter="url(#hblur)"/>
 <ellipse cx="300" cy="150" rx="100" ry="70" fill="url(#neb2)" filter="url(#hblur)"/>
-<g fill="#EAF2FA" opacity="0.7">
-<circle cx="14" cy="12" r="0.6"/><circle cx="40" cy="8" r="0.5"/><circle cx="70" cy="18" r="0.7"/>
-<circle cx="150" cy="10" r="0.5"/><circle cx="200" cy="14" r="0.6"/><circle cx="8" cy="60" r="0.5"/>
-<circle cx="30" cy="90" r="0.6"/><circle cx="60" cy="130" r="0.5"/><circle cx="100" cy="170" r="0.6"/>
-<circle cx="140" cy="190" r="0.5"/><circle cx="20" cy="180" r="0.6"/>
-</g>
-<g stroke="#2DE9DC" stroke-width="0.4" opacity="0.35">
-<line x1="14" y1="12" x2="40" y2="8"/><line x1="40" y1="8" x2="70" y2="18"/>
-<line x1="30" y1="90" x2="60" y2="130"/><line x1="60" y1="130" x2="20" y2="180"/>
-</g>
 <rect x="10" y="10" width="70" height="18" rx="9" fill="none" stroke="#2DE9DC" stroke-width="0.8" opacity="0.8"/>
 <text x="45" y="22" text-anchor="middle" font-family="Share Tech Mono, monospace" font-size="9" fill="#2DE9DC">\u{1F3A4} \u3046\u305f\u30ed\u30b0</text>
-<text x="130" y="70" text-anchor="middle" font-family="Share Tech Mono, monospace" font-size="9" letter-spacing="4" fill="#2DE9DC" opacity="0.9">KARAOKE LOG</text>
-<text x="130" y="98" text-anchor="middle" font-family="Orbitron, sans-serif" font-weight="900" font-size="24" fill="#EAF2FA" style="filter:drop-shadow(0 0 8px rgba(45,233,220,0.7)) drop-shadow(0 0 16px rgba(255,61,138,0.3));">\u30ab\u30e9\u30aa\u30b1\u8a18\u9332</text>
-<text x="130" y="118" text-anchor="middle" font-family="Share Tech Mono, monospace" font-size="7.5" letter-spacing="1.5" fill="#6C8299">DAM\u2605\u3068\u3082\u81ea\u52d5\u9023\u643a</text>
-<text x="130" y="138" text-anchor="middle" font-family="Share Tech Mono, monospace" font-size="8" fill="#2DE9DC" opacity="0.9">\u30b7\u30b9\u30c6\u30e0\u30b9\u30c6\u30fc\u30bf\u30b9: \u7a3c\u50cd\u4e2d</text>
+<text x="270" y="70" text-anchor="middle" font-family="Share Tech Mono, monospace" font-size="8" letter-spacing="3" fill="#2DE9DC" opacity="0.9">KARAOKE LOG</text>
+<text x="270" y="98" text-anchor="middle" font-family="Orbitron, sans-serif" font-weight="900" font-size="19" fill="#EAF2FA" style="filter:drop-shadow(0 0 8px rgba(45,233,220,0.7)) drop-shadow(0 0 16px rgba(255,61,138,0.3));">\u30ab\u30e9\u30aa\u30b1\u8a18\u9332</text>
+<text x="270" y="116" text-anchor="middle" font-family="Share Tech Mono, monospace" font-size="7.5" letter-spacing="1.5" fill="#6C8299">DAM\u2605\u3068\u3082\u81ea\u52d5\u9023\u643a</text>
+<text x="270" y="132" text-anchor="middle" font-family="Share Tech Mono, monospace" font-size="8" fill="#2DE9DC" opacity="0.9">\u30b7\u30b9\u30c6\u30e0\u30b9\u30c6\u30fc\u30bf\u30b9: \u7a3c\u50cd\u4e2d</text>
 ${rangeSvg}
-<circle cx="289" cy="152" r="16" fill="none" stroke="#1A2740" stroke-width="3"/>
-<circle cx="289" cy="152" r="16" fill="none" stroke="#2DE9DC" stroke-width="3" stroke-dasharray="${gaugeLen} 100" stroke-linecap="round" transform="rotate(-90 289 152)"/>
-<text x="289" y="156" text-anchor="middle" font-family="Share Tech Mono, monospace" font-size="10" fill="#EAF2FA">${avg.toFixed(1)}</text>
+<circle cx="270" cy="158" r="16" fill="none" stroke="#1A2740" stroke-width="3"/>
+<circle cx="270" cy="158" r="16" fill="none" stroke="#2DE9DC" stroke-width="3" stroke-dasharray="${gaugeLen} 100" stroke-linecap="round" transform="rotate(-90 270 158)"/>
+<text x="270" y="162" text-anchor="middle" font-family="Share Tech Mono, monospace" font-size="10" fill="#EAF2FA">${avg.toFixed(1)}</text>
 <rect x="0" y="180" width="340" height="30" fill="#0A0E17"/>
 <line x1="0" y1="180" x2="340" y2="180" stroke="#1A2740" stroke-width="1"/>
 <text x="12" y="199" font-family="Share Tech Mono, monospace" font-size="8" fill="#6C8299">${escapeHtml(logLine)}</text>
