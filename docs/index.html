@@ -125,6 +125,7 @@
       <div class="dist-title">スコア分布</div>
       <div id="distChart"></div>
     </div>
+    <div id="rangeCard"></div>
 
     <p style="font-size:13px;font-weight:500;margin:20px 0 8px;color:var(--text-1);">履歴</p>
     <div class="history-list" id="historyList"></div>
@@ -341,31 +342,28 @@ function computeVocalRange() {
   };
 }
 
-// 左側のカードに描く音域(補正後)。鍵盤は詳細画面と同じ buildKeyboardSvg を使う
+// 音域(補正後)カード。鍵盤は詳細画面と同じ buildKeyboardSvg を使う
 // 水色=全体の範囲 / ピンク=ふだんの範囲(上位5%・下位5%)
-function buildRangeKeyboardSvg(range, nowMs) {
+function buildRangeCardHtml(range, nowMs) {
   if (!range) return '';
   const names = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
   const nameOf = n => names[((n % 12) + 12) % 12] + (Math.floor(n / 12) - 1);
   const isNew = d => d && (nowMs - d.getTime()) <= RANGE_NEW_DAYS * 86400000;
   const recent = [range.hiDate, range.loDate].filter(isNew).sort((a, b) => b - a)[0];
-  const p2 = n => String(n).padStart(2, '0');
   const newTag = recent
-    ? `<text x="196" y="52" text-anchor="end" font-family="Share Tech Mono, monospace" font-size="8" font-weight="700" fill="#FF8A3D">NEW ${recent.getMonth() + 1}/${p2(recent.getDate())}</text>`
+    ? `<span style="color:#FF8A3D;font-weight:700;margin-left:8px;">NEW ${recent.getMonth() + 1}/${String(recent.getDate()).padStart(2, '0')}</span>`
     : '';
-  const kb = buildKeyboardSvg(range.lo, range.hi, range.usualLo, range.usualHi)
-    .replace(/<svg width="100%" height="\d+" viewBox/, '<svg x="16" y="60" width="178" height="62" viewBox');
-  const font = 'font-family="Share Tech Mono, monospace"';
+  const kb = buildKeyboardSvg(range.lo, range.hi, range.usualLo, range.usualHi);
   return `
-<rect x="10" y="38" width="190" height="124" rx="4" fill="#0A0E17" stroke="#1A2740" stroke-width="1"/>
-<text x="16" y="52" ${font} font-size="8" fill="#9FB3C8">音域(補正後)</text>
-${newTag}
-${kb}
-<text x="16" y="136" ${font} font-size="8" fill="#6C8299">最低</text>
-<text x="40" y="136" ${font} font-size="10" fill="#EAF2FA">${nameOf(range.lo)}</text>
-<text x="196" y="136" text-anchor="end" ${font} font-size="10" fill="#EAF2FA">${nameOf(range.hi)}</text>
-<text x="170" y="136" text-anchor="end" ${font} font-size="8" fill="#6C8299">最高</text>
-<text x="16" y="154" ${font} font-size="8" fill="#FF3D8A">ふだん ${nameOf(range.usualLo)}〜${nameOf(range.usualHi)}</text>`;
+    <div class="dist-wrap">
+      <div class="dist-title">音域(補正後)${newTag}</div>
+      <div style="margin:8px 0 6px;">${kb}</div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-2);">
+        <span>最低 <b style="color:var(--text-1);font-size:14px;">${nameOf(range.lo)}</b></span>
+        <span>ふだん ${nameOf(range.usualLo)}〜${nameOf(range.usualHi)}</span>
+        <span>最高 <b style="color:var(--text-1);font-size:14px;">${nameOf(range.hi)}</b></span>
+      </div>
+    </div>`;
 }
 
 function buildHeaderSvg(modeRecords, updatedAtIso) {
@@ -382,15 +380,24 @@ function buildHeaderSvg(modeRecords, updatedAtIso) {
     ? withScoreDate.reduce((a, r) => a + r.score, 0) / withScoreDate.length
     : 0;
 
-  // 右上の枠は音域(補正後)の鍵盤。全モード・全期間の記録から集計する
-  const updatedMs = updatedAtIso ? new Date(updatedAtIso).getTime() : Date.now();
-  const rangeSvg = buildRangeKeyboardSvg(computeVocalRange(), isNaN(updatedMs) ? Date.now() : updatedMs);
+  let sparkline = '';
+  if (scores.length >= 2) {
+    const minS = Math.min(...scores), maxS = Math.max(...scores);
+    const range = maxS - minS || 1;
+    const stepX = 74 / (scores.length - 1);
+    const pts = scores.map((s, i) => {
+      const x = 252 + i * stepX;
+      const y = 108 - ((s - minS) / range) * 36;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    });
+    sparkline = `<polyline points="${pts.join(' ')}" fill="none" stroke="#2DE9DC" stroke-width="1.2"/>`;
+  }
 
   const gaugeLen = Math.max(0, Math.min(100, avg)).toFixed(1);
   const logLine = `LOG: [${fmtLogTimestamp(updatedAtIso)}] \u2192 [\u81ea\u52d5\u9023\u643a\u30d7\u30ed\u30bb\u30b9\u5b8c\u4e86\u30fb${count}\u66f2]`;
 
   return `
-<svg width="100%" viewBox="0 0 340 210" style="display:block" xmlns="http://www.w3.org/2000/svg">
+<svg width="100%" height="210" viewBox="0 0 340 210" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
 <defs>
 <radialGradient id="neb1" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#1B9E96" stop-opacity="0.5"/><stop offset="100%" stop-color="#1B9E96" stop-opacity="0"/></radialGradient>
 <radialGradient id="neb2" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#B32C61" stop-opacity="0.4"/><stop offset="100%" stop-color="#B32C61" stop-opacity="0"/></radialGradient>
@@ -399,16 +406,27 @@ function buildHeaderSvg(modeRecords, updatedAtIso) {
 <rect width="340" height="210" fill="#05070C"/>
 <ellipse cx="60" cy="50" rx="110" ry="80" fill="url(#neb1)" filter="url(#hblur)"/>
 <ellipse cx="300" cy="150" rx="100" ry="70" fill="url(#neb2)" filter="url(#hblur)"/>
+<g fill="#EAF2FA" opacity="0.7">
+<circle cx="14" cy="12" r="0.6"/><circle cx="40" cy="8" r="0.5"/><circle cx="70" cy="18" r="0.7"/>
+<circle cx="150" cy="10" r="0.5"/><circle cx="200" cy="14" r="0.6"/><circle cx="8" cy="60" r="0.5"/>
+<circle cx="30" cy="90" r="0.6"/><circle cx="60" cy="130" r="0.5"/><circle cx="100" cy="170" r="0.6"/>
+<circle cx="140" cy="190" r="0.5"/><circle cx="20" cy="180" r="0.6"/>
+</g>
+<g stroke="#2DE9DC" stroke-width="0.4" opacity="0.35">
+<line x1="14" y1="12" x2="40" y2="8"/><line x1="40" y1="8" x2="70" y2="18"/>
+<line x1="30" y1="90" x2="60" y2="130"/><line x1="60" y1="130" x2="20" y2="180"/>
+</g>
 <rect x="10" y="10" width="70" height="18" rx="9" fill="none" stroke="#2DE9DC" stroke-width="0.8" opacity="0.8"/>
 <text x="45" y="22" text-anchor="middle" font-family="Share Tech Mono, monospace" font-size="9" fill="#2DE9DC">\u{1F3A4} \u3046\u305f\u30ed\u30b0</text>
-<text x="270" y="70" text-anchor="middle" font-family="Share Tech Mono, monospace" font-size="8" letter-spacing="3" fill="#2DE9DC" opacity="0.9">KARAOKE LOG</text>
-<text x="270" y="98" text-anchor="middle" font-family="Orbitron, sans-serif" font-weight="900" font-size="19" fill="#EAF2FA" style="filter:drop-shadow(0 0 8px rgba(45,233,220,0.7)) drop-shadow(0 0 16px rgba(255,61,138,0.3));">\u30ab\u30e9\u30aa\u30b1\u8a18\u9332</text>
-<text x="270" y="116" text-anchor="middle" font-family="Share Tech Mono, monospace" font-size="7.5" letter-spacing="1.5" fill="#6C8299">DAM\u2605\u3068\u3082\u81ea\u52d5\u9023\u643a</text>
-<text x="270" y="132" text-anchor="middle" font-family="Share Tech Mono, monospace" font-size="8" fill="#2DE9DC" opacity="0.9">\u30b7\u30b9\u30c6\u30e0\u30b9\u30c6\u30fc\u30bf\u30b9: \u7a3c\u50cd\u4e2d</text>
-${rangeSvg}
-<circle cx="270" cy="158" r="16" fill="none" stroke="#1A2740" stroke-width="3"/>
-<circle cx="270" cy="158" r="16" fill="none" stroke="#2DE9DC" stroke-width="3" stroke-dasharray="${gaugeLen} 100" stroke-linecap="round" transform="rotate(-90 270 158)"/>
-<text x="270" y="162" text-anchor="middle" font-family="Share Tech Mono, monospace" font-size="10" fill="#EAF2FA">${avg.toFixed(1)}</text>
+<text x="130" y="70" text-anchor="middle" font-family="Share Tech Mono, monospace" font-size="9" letter-spacing="4" fill="#2DE9DC" opacity="0.9">KARAOKE LOG</text>
+<text x="130" y="98" text-anchor="middle" font-family="Orbitron, sans-serif" font-weight="900" font-size="24" fill="#EAF2FA" style="filter:drop-shadow(0 0 8px rgba(45,233,220,0.7)) drop-shadow(0 0 16px rgba(255,61,138,0.3));">\u30ab\u30e9\u30aa\u30b1\u8a18\u9332</text>
+<text x="130" y="118" text-anchor="middle" font-family="Share Tech Mono, monospace" font-size="7.5" letter-spacing="1.5" fill="#6C8299">DAM\u2605\u3068\u3082\u81ea\u52d5\u9023\u643a</text>
+<text x="130" y="138" text-anchor="middle" font-family="Share Tech Mono, monospace" font-size="8" fill="#2DE9DC" opacity="0.9">\u30b7\u30b9\u30c6\u30e0\u30b9\u30c6\u30fc\u30bf\u30b9: \u7a3c\u50cd\u4e2d</text>
+<rect x="248" y="52" width="82" height="66" rx="4" fill="#0A0E17" stroke="#1A2740" stroke-width="1"/>
+${sparkline}
+<circle cx="289" cy="140" r="16" fill="none" stroke="#1A2740" stroke-width="3"/>
+<circle cx="289" cy="140" r="16" fill="none" stroke="#2DE9DC" stroke-width="3" stroke-dasharray="${gaugeLen} 100" stroke-linecap="round" transform="rotate(-90 289 140)"/>
+<text x="289" y="144" text-anchor="middle" font-family="Share Tech Mono, monospace" font-size="10" fill="#EAF2FA">${avg.toFixed(1)}</text>
 <rect x="0" y="180" width="340" height="30" fill="#0A0E17"/>
 <line x1="0" y1="180" x2="340" y2="180" stroke="#1A2740" stroke-width="1"/>
 <text x="12" y="199" font-family="Share Tech Mono, monospace" font-size="8" fill="#6C8299">${escapeHtml(logLine)}</text>
@@ -897,6 +915,12 @@ function render() {
   `;
 
   renderDistribution(scores);
+
+  const rangeEl = document.getElementById('rangeCard');
+  if (rangeEl) {
+    const ms = DATA.updatedAt ? new Date(DATA.updatedAt).getTime() : NaN;
+    rangeEl.innerHTML = buildRangeCardHtml(computeVocalRange(), isNaN(ms) ? Date.now() : ms);
+  }
 
   const itemGrid = document.getElementById('itemGrid');
   itemGrid.innerHTML = '';
