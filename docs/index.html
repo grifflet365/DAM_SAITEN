@@ -308,6 +308,85 @@ function fmtLogTimestamp(iso) {
   return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
+// 自分の音域(補正後)を全モードの記録から集計する
+// DAMの音域値はメロディ基準でオクターブがずれることがあるため、基準(最高 B4 / 最低 E2)から
+// 最高音が4半音以上高ければ -12、最低音が3半音以上低ければ +12 とみなす
+const RANGE_ANCHOR_HIGH = 71;
+const RANGE_ANCHOR_LOW = 40;
+const RANGE_NEW_DAYS = 7;
+function computeVocalRange() {
+  const items = [];
+  Object.values((DATA && DATA.modes) || {}).forEach(list => (list || []).forEach(r => {
+    const h = num(r.singingRangeHighest), l = num(r.singingRangeLowest);
+    const d = parseDate(pick(r, FIELD_CANDIDATES.date));
+    if (h === null || l === null || h <= 0 || l <= 0 || !d) return;
+    items.push({
+      d,
+      h: h > RANGE_ANCHOR_HIGH + 3 ? h - 12 : h,
+      l: l < RANGE_ANCHOR_LOW - 2 ? l + 12 : l,
+    });
+  }));
+  if (!items.length) return null;
+  items.sort((a, b) => a.d - b.d);
+  let hi = -Infinity, lo = Infinity, hiDate = null, loDate = null;
+  items.forEach(it => {
+    if (it.h > hi) { hi = it.h; hiDate = it.d; }
+    if (it.l < lo) { lo = it.l; loDate = it.d; }
+  });
+  const q = (arr, p) => arr.slice().sort((a, b) => a - b)[Math.min(arr.length - 1, Math.floor(arr.length * p))];
+  return {
+    hi, lo, hiDate, loDate,
+    usualHi: q(items.map(i => i.h), 0.95),
+    usualLo: q(items.map(i => i.l), 0.05),
+  };
+}
+
+// 枠内(x:248〜330, y:52〜118)に描く控えめな鍵盤
+function buildRangeKeyboardSvg(range, nowMs) {
+  if (!range) return '';
+  const isBlack = n => [1, 3, 6, 8, 10].includes(((n % 12) + 12) % 12);
+  const names = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+  const nameOf = n => names[((n % 12) + 12) % 12] + (Math.floor(n / 12) - 1);
+  let lowN = range.lo, highN = range.hi;
+  while (isBlack(lowN)) lowN--;
+  while (isBlack(highN)) highN++;
+  const white = [];
+  for (let n = lowN; n <= highN; n++) if (!isBlack(n)) white.push(n);
+  const x0 = 252, w = 74, ky = 70, kh = 34;
+  const ww = w / white.length;
+  const idx = {};
+  white.forEach((n, i) => { idx[n] = i; });
+  const baseOf = n => { while (isBlack(n)) n--; return n; };
+  const xf = n => x0 + idx[baseOf(n)] * ww;
+  const inUsual = n => n >= range.usualLo && n <= range.usualHi;
+  const inAll = n => n >= range.lo && n <= range.hi;
+  let s = '';
+  white.forEach(n => {
+    const fill = inUsual(n) ? '#FF3D8A' : (inAll(n) ? '#C7D2DC' : '#243349');
+    s += `<rect x="${xf(n).toFixed(2)}" y="${ky}" width="${(ww - 0.35).toFixed(2)}" height="${kh}" fill="${fill}" stroke="#0A0E17" stroke-width="0.3"/>`;
+  });
+  for (let n = lowN; n <= highN; n++) {
+    if (!isBlack(n)) continue;
+    const fill = inUsual(n) ? '#C2185B' : '#1B2330';
+    s += `<rect x="${(xf(n) + ww - ww * 0.3).toFixed(2)}" y="${ky}" width="${(ww * 0.6).toFixed(2)}" height="${(kh * 0.6).toFixed(1)}" fill="${fill}"/>`;
+  }
+  const isNew = d => d && (nowMs - d.getTime()) <= RANGE_NEW_DAYS * 86400000;
+  const recent = [[range.hiDate, '高'], [range.loDate, '低']].filter(x => isNew(x[0]))
+    .sort((a, b) => b[0] - a[0])[0];
+  const p2 = n => String(n).padStart(2, '0');
+  const newTag = recent
+    ? `<text x="328" y="54" text-anchor="end" font-family="Share Tech Mono, monospace" font-size="7" font-weight="700" fill="#FF8A3D">NEW ${recent[0].getMonth() + 1}/${p2(recent[0].getDate())}</text>`
+    : '';
+  return `
+<rect x="246" y="42" width="88" height="82" rx="4" fill="#0A0E17" stroke="#1A2740" stroke-width="1"/>
+<text x="252" y="54" font-family="Share Tech Mono, monospace" font-size="7" fill="#9FB3C8">音域補正</text>
+${newTag}
+<text x="252" y="66" font-family="Share Tech Mono, monospace" font-size="8" fill="#EAF2FA">${nameOf(range.lo)}</text>
+<text x="328" y="66" text-anchor="end" font-family="Share Tech Mono, monospace" font-size="8" fill="#EAF2FA">${nameOf(range.hi)}</text>
+${s}
+<text x="290" y="118" text-anchor="middle" font-family="Share Tech Mono, monospace" font-size="6" fill="#6C8299">${nameOf(range.usualLo)}〜${nameOf(range.usualHi)}</text>`;
+}
+
 function buildHeaderSvg(modeRecords, updatedAtIso) {
   const withScoreDate = modeRecords.map(r => ({
     score: num(pick(r, FIELD_CANDIDATES.score)),
@@ -322,18 +401,9 @@ function buildHeaderSvg(modeRecords, updatedAtIso) {
     ? withScoreDate.reduce((a, r) => a + r.score, 0) / withScoreDate.length
     : 0;
 
-  let sparkline = '';
-  if (scores.length >= 2) {
-    const minS = Math.min(...scores), maxS = Math.max(...scores);
-    const range = maxS - minS || 1;
-    const stepX = 74 / (scores.length - 1);
-    const pts = scores.map((s, i) => {
-      const x = 252 + i * stepX;
-      const y = 108 - ((s - minS) / range) * 36;
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    });
-    sparkline = `<polyline points="${pts.join(' ')}" fill="none" stroke="#2DE9DC" stroke-width="1.2"/>`;
-  }
+  // 右上の枠は音域(補正後)の鍵盤。全モード・全期間の記録から集計する
+  const updatedMs = updatedAtIso ? new Date(updatedAtIso).getTime() : Date.now();
+  const rangeSvg = buildRangeKeyboardSvg(computeVocalRange(), isNaN(updatedMs) ? Date.now() : updatedMs);
 
   const gaugeLen = Math.max(0, Math.min(100, avg)).toFixed(1);
   const logLine = `LOG: [${fmtLogTimestamp(updatedAtIso)}] \u2192 [\u81ea\u52d5\u9023\u643a\u30d7\u30ed\u30bb\u30b9\u5b8c\u4e86\u30fb${count}\u66f2]`;
@@ -364,11 +434,10 @@ function buildHeaderSvg(modeRecords, updatedAtIso) {
 <text x="130" y="98" text-anchor="middle" font-family="Orbitron, sans-serif" font-weight="900" font-size="24" fill="#EAF2FA" style="filter:drop-shadow(0 0 8px rgba(45,233,220,0.7)) drop-shadow(0 0 16px rgba(255,61,138,0.3));">\u30ab\u30e9\u30aa\u30b1\u8a18\u9332</text>
 <text x="130" y="118" text-anchor="middle" font-family="Share Tech Mono, monospace" font-size="7.5" letter-spacing="1.5" fill="#6C8299">DAM\u2605\u3068\u3082\u81ea\u52d5\u9023\u643a</text>
 <text x="130" y="138" text-anchor="middle" font-family="Share Tech Mono, monospace" font-size="8" fill="#2DE9DC" opacity="0.9">\u30b7\u30b9\u30c6\u30e0\u30b9\u30c6\u30fc\u30bf\u30b9: \u7a3c\u50cd\u4e2d</text>
-<rect x="248" y="52" width="82" height="66" rx="4" fill="#0A0E17" stroke="#1A2740" stroke-width="1"/>
-${sparkline}
-<circle cx="289" cy="140" r="16" fill="none" stroke="#1A2740" stroke-width="3"/>
-<circle cx="289" cy="140" r="16" fill="none" stroke="#2DE9DC" stroke-width="3" stroke-dasharray="${gaugeLen} 100" stroke-linecap="round" transform="rotate(-90 289 140)"/>
-<text x="289" y="144" text-anchor="middle" font-family="Share Tech Mono, monospace" font-size="10" fill="#EAF2FA">${avg.toFixed(1)}</text>
+${rangeSvg}
+<circle cx="289" cy="152" r="16" fill="none" stroke="#1A2740" stroke-width="3"/>
+<circle cx="289" cy="152" r="16" fill="none" stroke="#2DE9DC" stroke-width="3" stroke-dasharray="${gaugeLen} 100" stroke-linecap="round" transform="rotate(-90 289 152)"/>
+<text x="289" y="156" text-anchor="middle" font-family="Share Tech Mono, monospace" font-size="10" fill="#EAF2FA">${avg.toFixed(1)}</text>
 <rect x="0" y="180" width="340" height="30" fill="#0A0E17"/>
 <line x1="0" y1="180" x2="340" y2="180" stroke="#1A2740" stroke-width="1"/>
 <text x="12" y="199" font-family="Share Tech Mono, monospace" font-size="8" fill="#6C8299">${escapeHtml(logLine)}</text>
