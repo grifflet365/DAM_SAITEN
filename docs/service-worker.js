@@ -1,5 +1,5 @@
-const CACHE_NAME = 'karaoke-log-v1';
-const SHELL = ['./', './index.html', './manifest.json'];
+const CACHE_NAME = 'karaoke-log-v2-cyber';
+const SHELL = ['./', './index.html', './manifest.json', './assets/cyber-space.webp'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

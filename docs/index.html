@@ -12,7 +12,8 @@
 <title>カラオケ記録</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Noto+Sans+JP:wght@400;500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Noto+Sans+JP:wght@400;500;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<link rel="preload" as="image" href="./assets/cyber-space.webp">
 <style>
   :root{
     --bg-0:#05070C; --bg-1:#0A0E17; --bg-2:#111726; --border-1:#1A2740; --border-2:#243349;
@@ -24,7 +25,56 @@
   body{margin:0;font-family:'Noto Sans JP',sans-serif;background:var(--bg-0);color:var(--text-1);min-height:100vh;padding-bottom:3rem;}
   .wrap{max-width:var(--maxw);margin:0 auto;}
 
-  .header{position:relative;overflow:hidden;margin:12px;border:1px solid var(--border-1);border-radius:10px;line-height:0;}
+  .header{position:relative;isolation:isolate;overflow:hidden;margin:12px;border:1px solid #235e84;border-radius:12px;background:#020a18;box-shadow:0 0 32px #00b8fa12;}
+  .hero-scene{position:relative;min-height:276px;background:url('./assets/cyber-space.webp') center/cover no-repeat;}
+  .hero-scene::before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,#02091685,transparent 74%),linear-gradient(0deg,#020916d9,transparent 35%);pointer-events:none;}
+  .hero-scene::after{content:'';position:absolute;inset:14px;border:1px solid #32eaff33;clip-path:polygon(0 0,20px 0,20px 1px,1px 1px,1px 20px,0 20px,0 0,100% 0,100% 20px,calc(100% - 1px) 20px,calc(100% - 1px) 1px,calc(100% - 20px) 1px,calc(100% - 20px) 0,100% 0,100% 100%,calc(100% - 20px) 100%,calc(100% - 20px) calc(100% - 1px),calc(100% - 1px) calc(100% - 1px),calc(100% - 1px) calc(100% - 20px),100% calc(100% - 20px),100% 100%,0 100%,0 calc(100% - 20px),1px calc(100% - 20px),1px calc(100% - 1px),20px calc(100% - 1px),20px 100%,0 100%);pointer-events:none;}
+  .hero-copy{position:relative;z-index:2;padding:57px 30px 76px;}
+  .hero-eyebrow{display:flex;align-items:center;gap:12px;margin:0 0 13px;color:#83efff;font:10px 'Share Tech Mono',monospace;letter-spacing:0.25em;}
+  .hero-eyebrow::after{content:'';width:46px;height:1px;background:linear-gradient(90deg,#55eaff,transparent);}
+  .hero-title{width:max-content;max-width:100%;margin:0;color:#f0fcff;font-size:clamp(36px,7.7vw,56px);font-weight:900;line-height:1.3;letter-spacing:-0.045em;transform:skewX(-7deg);text-shadow:1px 2px 0 #087eaa,-1px -1px 0 #d8ffff,3px 3px 0 #772ac0,0 0 22px #27ceff70;}
+  .hero-title span{background:linear-gradient(170deg,#fff 27%,#e5fcff 52%,#65e5ff 80%,#bc94ff);background-clip:text;-webkit-background-clip:text;color:transparent;text-shadow:none;filter:drop-shadow(1px 2px 0 #1488ba) drop-shadow(2px 2px 0 #7338bf) drop-shadow(0 0 10px #23d2ff60);}
+  .hero-subtitle{display:flex;align-items:center;gap:12px;margin:12px 0 0;color:#d1e5fa;font-size:13px;letter-spacing:0.13em;text-shadow:0 2px 8px #000;}
+  .hero-subtitle::before{content:'';width:23px;height:1px;background:#36eaff;box-shadow:0 0 8px #36eaff;}
+  .hero-caption{position:absolute;z-index:2;bottom:20px;left:30px;margin:0;color:#92c6e0;font:9px 'Share Tech Mono',monospace;letter-spacing:0.16em;}
+  .hero-motion{position:absolute;z-index:3;top:17px;right:18px;padding:5px 8px;border:1px solid #4fc6f04d;border-radius:3px;background:#031123bf;color:#a7cbe3;font:10px 'Share Tech Mono',monospace;cursor:pointer;}
+  .hero-motion:hover{border-color:#69eaff;color:#fff;}
+  .hero-motion:focus-visible{outline:2px solid #74efff;outline-offset:3px;}
+  .hero-particles,.hero-scan{position:absolute;inset:0;pointer-events:none;}
+  .hero-particles{background:radial-gradient(circle at 13% 73%,#9fffff 0 1px,transparent 2px),radial-gradient(circle at 40% 80%,#2ceaff 0 1px,transparent 2px),radial-gradient(circle at 68% 24%,#e0acff 0 1px,transparent 2px),radial-gradient(circle at 87% 64%,#bc99ff 0 1px,transparent 2px),radial-gradient(circle at 55% 48%,#77eeff 0 1px,transparent 2px);animation:hero-drift 7s ease-in-out infinite alternate;}
+  .hero-scan{inset:0 auto 0 -40%;width:30%;background:linear-gradient(100deg,transparent,#62ddff08,#6adfff22,transparent);transform:skewX(-20deg);animation:hero-sweep 10s ease-in-out infinite;mix-blend-mode:screen;}
+  @keyframes hero-drift{from{transform:translate3d(0,9px,0);opacity:0.35;}to{transform:translate3d(10px,-10px,0);opacity:1;}}
+  @keyframes hero-sweep{0%,15%{left:-40%;opacity:0;}25%{opacity:1;}70%,100%{left:120%;opacity:0;}}
+  .header[data-motion="off"] .hero-particles,.header[data-motion="off"] .hero-scan{animation:none;}
+  .header[data-motion="off"] .hero-scan{display:none;}
+  .hero-telemetry{position:relative;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 20px;border-top:1px solid #28bdff40;background:linear-gradient(100deg,#071323,#0a0b21);}
+  .hero-metrics{display:flex;align-items:center;gap:18px;margin:0;}
+  .hero-metric dt{color:#91b0c8;font:9px 'Share Tech Mono',monospace;letter-spacing:0.13em;}
+  .hero-metric dd{margin:3px 0 0;color:#e4fbff;font:18px 'Share Tech Mono',monospace;}
+  .hero-metric dd small{margin-left:3px;color:#95acc4;font:10px 'Noto Sans JP',sans-serif;}
+  .hero-trend{width:80px;height:27px;color:#57e7ff;}
+  .hero-sync{text-align:right;min-width:0;}
+  .hero-sync-state{display:flex;align-items:center;justify-content:flex-end;gap:7px;color:#77eeff;font:10px 'Share Tech Mono',monospace;letter-spacing:0.1em;}
+  .hero-sync-state::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;box-shadow:0 0 9px currentColor;}
+  .hero-updated{display:block;margin-top:5px;color:#91a9c4;font:9px 'Share Tech Mono',monospace;}
+  .header[data-sync="error"] .hero-sync-state{color:#ffb879;}
+  @media(max-width:480px){
+    .hero-scene{min-height:270px;background-position:65% center;}
+    .hero-scene::before{background:linear-gradient(90deg,#020916b3,transparent),linear-gradient(0deg,#020916c9,transparent 40%);}
+    .hero-copy{padding:63px 21px 82px;}
+    .hero-eyebrow{font-size:8px;letter-spacing:0.18em;gap:8px;}
+    .hero-eyebrow::after{width:24px;}
+    .hero-title{font-size:clamp(32px,9.7vw,46px);}
+    .hero-subtitle{font-size:11px;letter-spacing:0.08em;}
+    .hero-caption{left:22px;bottom:20px;font-size:8px;letter-spacing:0.08em;}
+    .hero-telemetry{padding:12px 14px;gap:8px;}
+    .hero-metrics{gap:12px;}
+    .hero-metric dd{font-size:16px;}
+    .hero-trend{display:none;}
+    .hero-sync-state{font-size:9px;letter-spacing:0.04em;}
+    .hero-updated{font-size:8px;}
+  }
+  @media(prefers-reduced-motion:reduce){.hero-particles,.hero-scan{animation:none!important;}.hero-scan{display:none;}}
 
   .section{padding:1.1rem 1.1rem 0;}
   .chip-row{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;-ms-overflow-style:none;scrollbar-width:none;}
@@ -97,7 +147,27 @@
 </head>
 <body>
 <div class="wrap">
-  <div class="header" id="headerGraphic"></div>
+  <header class="header" id="headerGraphic" data-sync="loading" data-motion="off">
+    <div class="hero-scene">
+      <div class="hero-particles" aria-hidden="true"></div>
+      <div class="hero-scan" aria-hidden="true"></div>
+      <button class="hero-motion" id="heroMotion" type="button" aria-pressed="false" aria-label="背景アニメーション">演出 OFF</button>
+      <div class="hero-copy">
+        <p class="hero-eyebrow">KARAOKE // NEURAL ARCHIVE</p>
+        <h1 class="hero-title"><span>カラオケ記録</span></h1>
+        <p class="hero-subtitle">DAM★とも 自動連携</p>
+      </div>
+      <p class="hero-caption">SONG ANALYSIS &nbsp; / &nbsp; SCORE TRENDS &nbsp; / &nbsp; PERSONAL DATA</p>
+    </div>
+    <div class="hero-telemetry">
+      <dl class="hero-metrics">
+        <div class="hero-metric"><dt>TOTAL LOGS</dt><dd><span id="heroCount">—</span><small>曲</small></dd></div>
+        <div class="hero-metric"><dt>AVG SCORE</dt><dd id="heroAverage">—</dd></div>
+      </dl>
+      <svg class="hero-trend" id="heroTrend" viewBox="0 0 80 28" role="img" aria-label="直近9回の採点スコア推移"></svg>
+      <div class="hero-sync"><span class="hero-sync-state" id="heroSyncState" role="status">LOADING</span><time class="hero-updated" id="heroUpdated">更新日時を確認中</time></div>
+    </div>
+  </header>
 
   <div class="section">
     <div class="chip-row" id="periodBar">
@@ -366,72 +436,50 @@ function buildRangeCardHtml(range, nowMs) {
     </div>`;
 }
 
-function buildHeaderSvg(modeRecords, updatedAtIso) {
-  const withScoreDate = modeRecords.map(r => ({
+// ヘッダーは静的に表示し、モード変更時は実測データだけ更新する。
+let headerLoadState = 'loading';
+function updateHeader(modeRecords, updatedAtIso) {
+  const scored = modeRecords.map(r => ({
     score: num(pick(r, FIELD_CANDIDATES.score)),
     date: parseDate(pick(r, FIELD_CANDIDATES.date)),
   })).filter(r => r.score !== null);
-
-  withScoreDate.sort((a, b) => (a.date || 0) - (b.date || 0));
-  const recent = withScoreDate.slice(-9);
-  const scores = recent.map(r => r.score);
-  const count = modeRecords.length;
-  const avg = withScoreDate.length
-    ? withScoreDate.reduce((a, r) => a + r.score, 0) / withScoreDate.length
-    : 0;
-
-  let sparkline = '';
-  if (scores.length >= 2) {
-    const minS = Math.min(...scores), maxS = Math.max(...scores);
-    const range = maxS - minS || 1;
-    const stepX = 74 / (scores.length - 1);
-    const pts = scores.map((s, i) => {
-      const x = 252 + i * stepX;
-      const y = 108 - ((s - minS) / range) * 36;
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    });
-    sparkline = `<polyline points="${pts.join(' ')}" fill="none" stroke="#2DE9DC" stroke-width="1.2"/>`;
+  document.getElementById('heroCount').textContent = headerLoadState === 'ready'
+    ? modeRecords.length.toLocaleString('ja-JP') : '—';
+  document.getElementById('heroAverage').textContent = scored.length
+    ? (scored.reduce((sum, r) => sum + r.score, 0) / scored.length).toFixed(2) : '—';
+  const recent = scored.sort((a, b) => (a.date || 0) - (b.date || 0)).slice(-9);
+  const trend = document.getElementById('heroTrend');
+  trend.innerHTML = '';
+  if (recent.length >= 2) {
+    const min = Math.min(...recent.map(r => r.score));
+    const range = Math.max(...recent.map(r => r.score)) - min;
+    const points = recent.map((r, i) => `${2 + i * 76 / (recent.length - 1)},${range ? 25 - (r.score - min) / range * 22 : 14}`);
+    trend.innerHTML = `<polyline points="${points.join(' ')}" fill="none" stroke="currentColor" stroke-width="1.4"/>`;
   }
-
-  const gaugeLen = Math.max(0, Math.min(100, avg)).toFixed(1);
-  const logLine = `LOG: [${fmtLogTimestamp(updatedAtIso)}] \u2192 [\u81ea\u52d5\u9023\u643a\u30d7\u30ed\u30bb\u30b9\u5b8c\u4e86\u30fb${count}\u66f2]`;
-
-  return `
-<svg width="100%" height="210" viewBox="0 0 340 210" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
-<defs>
-<radialGradient id="neb1" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#1B9E96" stop-opacity="0.5"/><stop offset="100%" stop-color="#1B9E96" stop-opacity="0"/></radialGradient>
-<radialGradient id="neb2" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#B32C61" stop-opacity="0.4"/><stop offset="100%" stop-color="#B32C61" stop-opacity="0"/></radialGradient>
-<filter id="hblur"><feGaussianBlur stdDeviation="20"/></filter>
-</defs>
-<rect width="340" height="210" fill="#05070C"/>
-<ellipse cx="60" cy="50" rx="110" ry="80" fill="url(#neb1)" filter="url(#hblur)"/>
-<ellipse cx="300" cy="150" rx="100" ry="70" fill="url(#neb2)" filter="url(#hblur)"/>
-<g fill="#EAF2FA" opacity="0.7">
-<circle cx="14" cy="12" r="0.6"/><circle cx="40" cy="8" r="0.5"/><circle cx="70" cy="18" r="0.7"/>
-<circle cx="150" cy="10" r="0.5"/><circle cx="200" cy="14" r="0.6"/><circle cx="8" cy="60" r="0.5"/>
-<circle cx="30" cy="90" r="0.6"/><circle cx="60" cy="130" r="0.5"/><circle cx="100" cy="170" r="0.6"/>
-<circle cx="140" cy="190" r="0.5"/><circle cx="20" cy="180" r="0.6"/>
-</g>
-<g stroke="#2DE9DC" stroke-width="0.4" opacity="0.35">
-<line x1="14" y1="12" x2="40" y2="8"/><line x1="40" y1="8" x2="70" y2="18"/>
-<line x1="30" y1="90" x2="60" y2="130"/><line x1="60" y1="130" x2="20" y2="180"/>
-</g>
-<rect x="10" y="10" width="70" height="18" rx="9" fill="none" stroke="#2DE9DC" stroke-width="0.8" opacity="0.8"/>
-<text x="45" y="22" text-anchor="middle" font-family="Share Tech Mono, monospace" font-size="9" fill="#2DE9DC">\u{1F3A4} \u3046\u305f\u30ed\u30b0</text>
-<text x="130" y="70" text-anchor="middle" font-family="Share Tech Mono, monospace" font-size="9" letter-spacing="4" fill="#2DE9DC" opacity="0.9">KARAOKE LOG</text>
-<text x="130" y="98" text-anchor="middle" font-family="Orbitron, sans-serif" font-weight="900" font-size="24" fill="#EAF2FA" style="filter:drop-shadow(0 0 8px rgba(45,233,220,0.7)) drop-shadow(0 0 16px rgba(255,61,138,0.3));">\u30ab\u30e9\u30aa\u30b1\u8a18\u9332</text>
-<text x="130" y="118" text-anchor="middle" font-family="Share Tech Mono, monospace" font-size="7.5" letter-spacing="1.5" fill="#6C8299">DAM\u2605\u3068\u3082\u81ea\u52d5\u9023\u643a</text>
-<text x="130" y="138" text-anchor="middle" font-family="Share Tech Mono, monospace" font-size="8" fill="#2DE9DC" opacity="0.9">\u30b7\u30b9\u30c6\u30e0\u30b9\u30c6\u30fc\u30bf\u30b9: \u7a3c\u50cd\u4e2d</text>
-<rect x="248" y="52" width="82" height="66" rx="4" fill="#0A0E17" stroke="#1A2740" stroke-width="1"/>
-${sparkline}
-<circle cx="289" cy="140" r="16" fill="none" stroke="#1A2740" stroke-width="3"/>
-<circle cx="289" cy="140" r="16" fill="none" stroke="#2DE9DC" stroke-width="3" stroke-dasharray="${gaugeLen} 100" stroke-linecap="round" transform="rotate(-90 289 140)"/>
-<text x="289" y="144" text-anchor="middle" font-family="Share Tech Mono, monospace" font-size="9" fill="#EAF2FA">${avg.toFixed(2)}</text>
-<rect x="0" y="180" width="340" height="30" fill="#0A0E17"/>
-<line x1="0" y1="180" x2="340" y2="180" stroke="#1A2740" stroke-width="1"/>
-<text x="12" y="199" font-family="Share Tech Mono, monospace" font-size="8" fill="#6C8299">${escapeHtml(logLine)}</text>
-</svg>`;
+  trend.hidden = recent.length < 2;
+  document.getElementById('headerGraphic').dataset.sync = headerLoadState;
+  document.getElementById('heroSyncState').textContent = {
+    loading: 'LOADING', ready: 'DATA LOADED', error: 'LOAD ERROR',
+  }[headerLoadState];
+  const updated = document.getElementById('heroUpdated');
+  const validDate = updatedAtIso && !Number.isNaN(new Date(updatedAtIso).getTime());
+  updated.textContent = validDate ? `更新 ${fmtLogTimestamp(updatedAtIso)}` : '更新日時 —';
+  if (validDate) updated.dateTime = new Date(updatedAtIso).toISOString();
+  else updated.removeAttribute('datetime');
 }
+
+const heroMotion = document.getElementById('heroMotion');
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+function setHeroMotion(enabled) {
+  document.getElementById('headerGraphic').dataset.motion = enabled ? 'on' : 'off';
+  heroMotion.setAttribute('aria-pressed', String(enabled));
+  heroMotion.textContent = `演出 ${enabled ? 'ON' : 'OFF'}`;
+}
+setHeroMotion(!reducedMotion.matches);
+heroMotion.addEventListener('click', () => {
+  setHeroMotion(heroMotion.getAttribute('aria-pressed') !== 'true' && !reducedMotion.matches);
+});
+reducedMotion.addEventListener('change', e => setHeroMotion(!e.matches));
 
 // この1回分の演奏の全項目(音程・技法回数・ロングトーン等)を組み立てる
 // レーダー軸 → 全国平均フィールドの対応
@@ -875,10 +923,7 @@ function toggleSongDetail(idx) {
 }
 
 function render() {
-  const headerEl = document.getElementById('headerGraphic');
-  if (headerEl) {
-    headerEl.innerHTML = buildHeaderSvg(DATA.modes[curMode] || [], DATA.updatedAt);
-  }
+  updateHeader(DATA.modes[curMode] || [], DATA.updatedAt);
 
   const allRecords = (DATA.modes[curMode] || []).map(r => {
     const rawDateStr = pick(r, FIELD_CANDIDATES.date);
@@ -1040,12 +1085,18 @@ document.getElementById('modeTabs').addEventListener('click', (e) => {
 });
 
 fetch('./data.json?_=' + Date.now())
-  .then(r => r.json())
+  .then(r => {
+    if (!r.ok) throw new Error('採点データを取得できませんでした');
+    return r.json();
+  })
   .then(json => {
+    if (!json || !json.modes || typeof json.modes !== 'object') throw new Error('採点データの形式が不正です');
     DATA = json;
+    headerLoadState = 'ready';
     render();
   })
   .catch(() => {
+    headerLoadState = 'error';
     render();
   });
 </script>
