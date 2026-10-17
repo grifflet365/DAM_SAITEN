@@ -63,7 +63,7 @@
 
   .history-list{margin-top:14px;}
   .entry{background:var(--bg-1);border:1px solid var(--border-1);border-left:2px solid var(--cyan-dim);border-radius:8px;padding:0.7rem 0.9rem;margin-bottom:8px;display:flex;align-items:flex-start;gap:10px;}
-  .entry-score{font-family:'Share Tech Mono',monospace;font-size:1.1rem;color:var(--magenta);background:var(--bg-0);border:1px solid var(--border-1);border-radius:6px;padding:5px 4px;min-width:52px;text-align:center;flex-shrink:0;}
+  .entry-score{font-family:'Share Tech Mono',monospace;font-size:1.1rem;color:var(--magenta);background:var(--bg-0);border:1px solid var(--border-1);border-radius:6px;padding:5px 4px;min-width:62px;text-align:center;flex-shrink:0;}
   .entry-body{flex:1;min-width:0;}
   .entry-song{font-size:13.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-1);}
   .entry-song-link{background:none;border:none;padding:0;margin:0;font:inherit;font-weight:700;color:var(--cyan);text-decoration:underline;cursor:pointer;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;}
@@ -426,7 +426,7 @@ function buildHeaderSvg(modeRecords, updatedAtIso) {
 ${sparkline}
 <circle cx="289" cy="140" r="16" fill="none" stroke="#1A2740" stroke-width="3"/>
 <circle cx="289" cy="140" r="16" fill="none" stroke="#2DE9DC" stroke-width="3" stroke-dasharray="${gaugeLen} 100" stroke-linecap="round" transform="rotate(-90 289 140)"/>
-<text x="289" y="144" text-anchor="middle" font-family="Share Tech Mono, monospace" font-size="10" fill="#EAF2FA">${avg.toFixed(1)}</text>
+<text x="289" y="144" text-anchor="middle" font-family="Share Tech Mono, monospace" font-size="9" fill="#EAF2FA">${avg.toFixed(2)}</text>
 <rect x="0" y="180" width="340" height="30" fill="#0A0E17"/>
 <line x1="0" y1="180" x2="340" y2="180" stroke="#1A2740" stroke-width="1"/>
 <text x="12" y="199" font-family="Share Tech Mono, monospace" font-size="8" fill="#6C8299">${escapeHtml(logLine)}</text>
@@ -626,8 +626,8 @@ function buildDetailPanelHtml(r, idx) {
   const statsCards = `
     <div class="detail-stats-row">
       <div class="stat-card"><div class="stat-label">歌唱回数</div><div class="stat-value">${stats.count}回</div></div>
-      <div class="stat-card"><div class="stat-label">平均点</div><div class="stat-value accent-score">${stats.avg !== null ? stats.avg.toFixed(1) : '--'}</div></div>
-      <div class="stat-card"><div class="stat-label">最高点</div><div class="stat-value accent-score">${stats.max !== null ? stats.max.toFixed(1) : '--'}</div></div>
+      <div class="stat-card"><div class="stat-label">平均点</div><div class="stat-value accent-score">${stats.avg !== null ? stats.avg.toFixed(2) : '--'}</div></div>
+      <div class="stat-card"><div class="stat-label">最高点</div><div class="stat-value accent-score">${stats.max !== null ? stats.max.toFixed(2) : '--'}</div></div>
     </div>`;
 
   const axisKeys = RADAR_AXES[curMode] || [];
@@ -910,8 +910,8 @@ function render() {
   const statsRow = document.getElementById('statsRow');
   statsRow.innerHTML = `
     <div class="stat-card"><div class="stat-label">記録数</div><div class="stat-value">${count}曲</div></div>
-    <div class="stat-card"><div class="stat-label">平均点</div><div class="stat-value accent-score">${avg !== null ? avg.toFixed(1) : '--'}</div></div>
-    <div class="stat-card"><div class="stat-label">最高点</div><div class="stat-value accent-score">${max !== null ? max.toFixed(1) : '--'}</div></div>
+    <div class="stat-card"><div class="stat-label">平均点</div><div class="stat-value accent-score">${avg !== null ? avg.toFixed(2) : '--'}</div></div>
+    <div class="stat-card"><div class="stat-label">最高点</div><div class="stat-value accent-score">${max !== null ? max.toFixed(2) : '--'}</div></div>
   `;
 
   renderDistribution(scores);
@@ -956,7 +956,7 @@ function render() {
 
       return `
       <div class="entry" data-idx="${i}">
-        <div class="entry-score">${r.score !== null ? r.score.toFixed(1) : '--'}</div>
+        <div class="entry-score">${r.score !== null ? r.score.toFixed(2) : '--'}</div>
         <div class="entry-body">
           <div class="entry-head">
             <button type="button" class="entry-song-link" data-idx="${i}">${escapeHtml(r.song)}</button>
