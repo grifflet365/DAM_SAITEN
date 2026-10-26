@@ -3,9 +3,13 @@
 """
 DAM★とも 採点履歴 自動取得スクリプト
 
-環境変数:
-  DAM_LOGIN_ID   ... DAM★とものログインID
-  DAM_PASSWORD   ... DAM★とものパスワード
+ログイン:
+  2026-10-26 から DAM★とも のログインに Google reCAPTCHA v3 が入り、IDとパスワードだけの
+  自動ログイン(下の login 関数)は通らなくなった。判定をすり抜ける細工はしない。
+  ログインは人が scripts/dam_session.py login(Chrome の窓)で行い、このスクリプトは
+  そこで保存したログイン状態(%LOCALAPPDATA%\\DAM_SAITEN\\session.json)を使う。
+  ログイン状態が無い・切れている場合は終了コード 2 で終わる(何も保存しない)。
+  以前の環境変数 DAM_LOGIN_ID / DAM_PASSWORD は使わなくなった。
 
 出力:
   data/ai.json        精密採点Ai の全蓄積レコード
@@ -25,6 +29,9 @@ import xml.etree.ElementTree as ET
 from datetime import datetime, timezone, timedelta
 
 import requests
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import dam_session  # noqa: E402  (人がログインして保存したログイン状態の読み書き)
 
 BASE = "https://www.clubdam.com"
 LOGIN_PAGE_URL = f"{BASE}/app/damtomo/auth/member/Login.do"
@@ -547,21 +554,33 @@ def merge_new_records(mode, existing, fetched):
     return existing, added
 
 
+def open_saved_session():
+    """dam_session.py login で人がログインして保存したログイン状態から、ログイン済みのセッションを作る。
+    ログインに使ったブラウザと同じ User-Agent を使う(ブラウザの版と合わない sec-ch-ua 系は送らない)。"""
+    global UA
+    session = dam_session.load_session()
+    if session is None:
+        return None, None
+    browser_ua = session.headers.get("User-Agent")
+    session.headers.update({k: v for k, v in COMMON_HEADERS.items() if not k.lower().startswith("sec-ch-ua")})
+    if browser_ua:
+        UA = browser_ua
+        session.headers["User-Agent"] = browser_ua
+    ok, mypage_html = dam_session.is_logged_in(session)
+    return (session, mypage_html) if ok else (None, None)
+
+
 def main():
-    login_id = os.environ.get("DAM_LOGIN_ID")
-    password = os.environ.get("DAM_PASSWORD")
-    if not login_id or not password:
-        log("エラー: 環境変数 DAM_LOGIN_ID / DAM_PASSWORD が設定されていません。")
-        sys.exit(1)
-
-    session = requests.Session()
-    session.headers.update(COMMON_HEADERS)
-
     try:
-        mypage_html = login(session, login_id, password)
+        session, mypage_html = open_saved_session()
     except Exception as e:
-        log(f"ログイン処理でエラー: {e}")
+        log(f"保存したログイン状態の確認でエラー: {e}")
         sys.exit(1)
+    if session is None:
+        log("ログインが必要です(保存したログイン状態が無いか、切れています)。"
+            "scripts\\login_and_sync.cmd を実行して、開いた Chrome の窓でログインしてください。")
+        sys.exit(2)
+    log("保存したログイン状態でログイン済みを確認しました。")
 
     cdm_card_no, cdm_token = extract_ids(mypage_html)
     log(f"cdmCardNo 取得済み (先頭6文字のみ表示: {cdm_card_no[:6]}...)")
@@ -669,6 +688,16 @@ def main():
             "originalKeys": original_keys_for_dashboard,
         },
     )
+
+    # サーバーが更新した Cookie を保存し直して、ログイン状態をなるべく長く保つ
+    try:
+        dam_session.save_session(
+            [{"name": c.name, "value": c.value, "domain": c.domain, "path": c.path, "expires": c.expires, "secure": c.secure}
+             for c in session.cookies],
+            session.headers.get("User-Agent"),
+        )
+    except Exception as e:
+        log(f"ログイン状態の保存し直しに失敗(取得結果には影響なし): {e}")
 
     log("完了: " + json.dumps(summary, ensure_ascii=False))
 

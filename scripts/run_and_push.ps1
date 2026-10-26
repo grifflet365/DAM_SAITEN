@@ -1,10 +1,11 @@
 ﻿# DAMスコア取得をこのPC上で実行し、変更があればコミット&プッシュする。
 # タスクスケジューラから定期実行される想定(旧GitHub Actionsの代替)。
 #
-# 事前準備(初回のみ、このスクリプトの外で1回だけ実行):
-#   setx DAM_LOGIN_ID "自分のログインID"
-#   setx DAM_PASSWORD "自分のパスワード"
-# (setxで設定した環境変数は、新しく開いたシェル/タスクスケジューラから見える)
+# ログイン(2026-10-26〜):
+#   DAM★とものログインに reCAPTCHA v3 が入り、IDとパスワードだけの自動ログインは通らなくなった。
+#   ログインは人が scripts\login_and_sync.cmd(Chrome の窓が開く)で行い、ここでは保存した
+#   ログイン状態を使う。ログイン状態が無い・切れている場合は、何もコミットせずに終了コード 2 で終わる。
+#   以前の環境変数 DAM_LOGIN_ID / DAM_PASSWORD は使わなくなった。
 #
 # 注意: git等のネイティブコマンドは正常時でもstderrに出力することがあるため、
 # $ErrorActionPreference は Continue にして、成否は $LASTEXITCODE で判定する。
@@ -22,11 +23,6 @@ function Log($msg) {
     Add-Content -Path $LogFile -Value $line
 }
 
-if (-not $env:DAM_LOGIN_ID -or -not $env:DAM_PASSWORD) {
-    Log "エラー: 環境変数 DAM_LOGIN_ID / DAM_PASSWORD が設定されていません。setxで設定してください。"
-    exit 1
-}
-
 Set-Location $RepoRoot
 
 Log "git pull中..."
@@ -38,8 +34,13 @@ if ($LASTEXITCODE -ne 0) {
 
 Log "scrape_dam.py 実行中..."
 python scripts\scrape_dam.py 2>&1 | ForEach-Object { Log $_ }
-if ($LASTEXITCODE -ne 0) {
-    Log "scrape_dam.py が失敗しました(exit=$LASTEXITCODE)。コミットは行いません。"
+$scrapeExit = $LASTEXITCODE
+if ($scrapeExit -eq 2) {
+    Log "ログインが必要です。scripts\login_and_sync.cmd を実行して、開いた Chrome の窓でログインしてください。コミットは行いません。"
+    exit 2
+}
+if ($scrapeExit -ne 0) {
+    Log "scrape_dam.py が失敗しました(exit=$scrapeExit)。コミットは行いません。"
     exit 1
 }
 
