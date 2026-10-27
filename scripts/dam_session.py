@@ -123,7 +123,7 @@ def login():
                 seen = len(attempts)
                 page.wait_for_timeout(1500)        # ログイン後の画面の移動を待つ
                 r = ctx.request.get(MYPAGE_URL, timeout=30000)
-                if r.ok and "cdmCardNo" in r.text():
+                if r.ok and b"cdmCardNo" in r.body():   # マイページは Shift-JIS のことがあるので、文字にせずバイト列で探す
                     ok = True
                     break
                 if not on_login_page:
