@@ -20,3 +20,10 @@
 [2026-10-27 14:08:13] [2026-10-27 14:08:13] 完了: {"ai": {"total": 1496, "added": 29, "detailFetched": 29}, "dxg": {"total": 210, "added": 0, "detailFetched": 0}, "hearts": {"total": 436, "added": 0, "detailFetched": 0}}
 [2026-10-27 14:08:13] レパートリー更新中...
 [2026-10-27 14:08:14] repertoire.json: 232曲 (未分類 6曲)
+[2026-10-27 14:08:15] [main a1cc8e7] 採点データ更新 2026-10-27 14:08 JST (ローカル実行)
+[2026-10-27 14:08:15]  7 files changed, 10654 insertions(+), 7 deletions(-)
+[2026-10-27 14:08:15]  create mode 100644 data/_debug/run_and_push_20261027_140543.log
+[2026-10-27 14:08:15]  create mode 100644 data/_debug/run_and_push_20261027_140719.log
+[2026-10-27 14:08:20] To https://github.com/grifflet365/DAM_SAITEN.git
+[2026-10-27 14:08:20]    0259b9f..a1cc8e7  main -> main
+[2026-10-27 14:08:20] コミット&プッシュ完了: 採点データ更新 2026-10-27 14:08 JST (ローカル実行)
