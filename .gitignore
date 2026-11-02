@@ -1,3 +1,6 @@
 __pycache__/
 *.pyc
 .DS_Store
+
+# 確認用の生データ(会員番号を含みうる)は公開しない
+data/_debug/*_raw.xml

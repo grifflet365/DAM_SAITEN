@@ -271,6 +271,11 @@ def parse_scoring_xml(xml_text):
     return records, page_meta
 
 
+def sanitize_dump(text):
+    """確認用に保存する生のXMLから、会員番号・トークンを伏せる(このファイルは .gitignore で公開もしない)"""
+    return re.sub(r"<(cdmCardNo|cdmToken)>[^<]*</\1>", r"<\1>***</\1>", text)
+
+
 def fetch_xml_list(session, url, params, debug_dump_path=None, page_param="pageNo", max_pages=60):
     """XML APIを全ページ分たどってレコード一覧(list of dict)を返す
 
@@ -306,7 +311,7 @@ def fetch_xml_list(session, url, params, debug_dump_path=None, page_param="pageN
         if debug_dump_path and not first_dump_saved:
             os.makedirs(os.path.dirname(debug_dump_path), exist_ok=True)
             with open(debug_dump_path, "w", encoding="utf-8") as f:
-                f.write(r.text)
+                f.write(sanitize_dump(r.text))
             first_dump_saved = True
 
         records, page_meta = parse_scoring_xml(r.text)
@@ -539,6 +544,35 @@ def save_json(path, data):
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 
+EXCLUDED_PATH = os.path.join(DATA_DIR, "excluded_ids.json")
+
+
+def load_excluded():
+    """取り込まない記録のID(別の人が同じ会員でログインしたままの記録など)。{"ai": ["ai:123", ...], ...}"""
+    if os.path.exists(EXCLUDED_PATH):
+        with open(EXCLUDED_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {}
+
+
+def apply_exclusions(mode, existing, fetched, excluded):
+    """除外IDの記録を、蓄積済みデータと今回の取得分から取り除く。
+    DAMが返すのは最新200件だけなので、取得分に含まれなくなったIDは二度と戻らない。
+    その分は除外リストから自動で外す(取得が空のときは判断できないので外さない)。"""
+    ids = set(excluded.get(mode, []))
+    if not ids:
+        return existing, fetched
+    existing = [r for r in existing if r.get("_id") not in ids]
+    fetched_ids = {make_record_id(mode, rec) for rec in fetched}
+    kept = [rec for rec in fetched if make_record_id(mode, rec) not in ids]
+    if fetched:
+        remaining = [i for i in excluded[mode] if i in fetched_ids]
+        if len(remaining) != len(excluded[mode]):
+            log(f"{mode}: 除外リストから {len(excluded[mode]) - len(remaining)}件 を外しました(最新200件から外れたため)")
+            excluded[mode] = remaining
+    return existing, kept
+
+
 def merge_new_records(mode, existing, fetched):
     existing_ids = {r["_id"] for r in existing}
     added = 0
@@ -659,9 +693,12 @@ def main():
     # --- 差分マージして蓄積 ---
     summary = {}
     combined_for_dashboard = {}
+    excluded = load_excluded()
+    excluded_before = json.dumps(excluded, sort_keys=True)
     for mode, fetched in results.items():
         path = os.path.join(DATA_DIR, f"{mode}.json")
         existing = load_existing(path)
+        existing, fetched = apply_exclusions(mode, existing, fetched, excluded)
         merged, added = merge_new_records(mode, existing, fetched)
         log(f"{mode}: 累計 {len(merged)}件 (今回 +{added}件)")
 
@@ -671,6 +708,9 @@ def main():
         save_json(path, merged)
         summary[mode] = {"total": len(merged), "added": added, "detailFetched": enriched_count}
         combined_for_dashboard[mode] = merged
+
+    if json.dumps(excluded, sort_keys=True) != excluded_before:
+        save_json(EXCLUDED_PATH, excluded)
 
     # 原曲キー(公式APIから取得、requestNoごとにキャッシュ)
     original_keys_path = os.path.join(DATA_DIR, "original_keys.json")
