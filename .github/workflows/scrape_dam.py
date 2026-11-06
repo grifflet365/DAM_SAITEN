@@ -324,7 +324,7 @@ def main():
         sys.exit(1)
 
     cdm_card_no, cdm_token = extract_ids(mypage_html)
-    log(f"cdmCardNo 取得済み (先頭6文字のみ表示: {cdm_card_no[:6]}...)")
+    log("cdmCardNo 取得済み")
 
     results = {}
 

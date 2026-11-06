@@ -4,3 +4,5 @@ __pycache__/
 
 # 確認用の生データ(会員番号を含みうる)は公開しない
 data/_debug/*_raw.xml
+# 実行ログは公開しない
+data/_debug/*.log
